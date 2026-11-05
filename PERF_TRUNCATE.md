@@ -51,15 +51,15 @@ Domains: helpers/sqrt/negate **65536**; pack **2×256×128**; binary **65536²**
 | Op | C hot avg | ASM hot avg | gap |
 |----|----------:|------------:|----:|
 | `mul` | 102 | **118** | **+16 (+15.7%)** |
-| `add` | 45 | **54** | **+9 (+20.0%)** |
-| `sub` | 48 | **56** | **+8 (+16.7%)** |
+| `add` | 45 | **52** | **+7 (+15.6%)** |
+| `sub` | 48 | **54** | **+6 (+12.5%)** |
 | `div` | 96 | **104** | **+8 (+8.3%)** |
 | `sqrt` | 276 | 275 | −1 (~tied) |
 | `u32_to_bf16` | 23 | 22 | −1 (ASM slightly better) |
 
 **Priority:** close **add/sub** then **mul**; **div** already closest among hot binaries; **sqrt** tied.
 
-Door `mv` drop (add/sub only): hot **−2** vs pre-git baseline (add 56→54, sub 58→56).
+Door `mv` drop: hot **−2** (add 56→54). Same-sign skip left renorm: **−2** more (add 54→52, sub 56→54; samp). Full classed pending next milestone.
 
 ---
 

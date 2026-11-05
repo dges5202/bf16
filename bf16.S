@@ -554,30 +554,24 @@ bf16_add_hot:
     /*
      * Hot body: |0x80; align by |dexp| (>=8 -> 0); add/sub; renorm; pack.
      *
-     * TODO — align block (below) is a hot-path instret suspect vs GCC -O2:
-     *   1) Mirror arms (shift a5 vs shift t6) each end with j after; on the
-     *      exp_a>=exp_b side, li a5,0 could fall into after if labels were
-     *      reordered — saves 1 j on dexp>=8.
-     *   2) li t3,8 every call: replace bgeu t0,t3 with sltiu + branch, drop
-     *      the li.
-     *   3) Optional larger rewrite: one shared shift-or-clear after picking
-     *      max exp — less duplication, watch taken-branch rate.
-     *   Rough win ~1–2 insn on common exp_a>=exp_b; not the whole +11 gap.
+     * Same-sign (GCC -O2 insight): two hidden-1 mants sum to >= 0x80 always,
+     * so skip the left-shift loop — only >=0x100 needs one right shift+exp++,
+     * else pack.  Opposite-sign still uses full renorm (can be < 0x80).
      */
     ori     t6, t6, 0x80
     ori     a5, a5, 0x80
-    li      t3, 8                                       # TODO: avoid via sltiu
+    li      t3, 8
 
     bltu    t5, a4, bf16_add_exp                        # exp_a < exp_b?
     # exp_a >= exp_b: result exp stays t5; shift / clear mant_b (a5)
     sub     t0, t5, a4                                  # dexp
     bgeu    t0, t3, bf16_add_exp_shift_b                # dexp >= 8 -> 0
     srl     a5, a5, t0
-    j       bf16_add_exp_after                          # TODO: layout vs fall-through
+    j       bf16_add_exp_after
 
 bf16_add_exp_shift_b:
     li      a5, 0
-    j       bf16_add_exp_after                          # TODO: fall into after (drop j)
+    j       bf16_add_exp_after
 
 bf16_add_exp:
     # exp_b > exp_a: result exp = exp_b; shift / clear mant_a (t6)
@@ -589,14 +583,17 @@ bf16_add_exp:
 
 bf16_add_exp_shift_a:
     li      t6, 0
-    # falls into after (no j) — contrast shift_b above
+    # falls into after
 
 bf16_add_exp_after:
-
     bne     t4, a3, bf16_add_sign_diff
-    # t4 = sign = sign_a
-    add     t6, t6, a5                              # t6 = mant = mant_a + mant_b
-    j       bf16_add_mant_after
+    # same sign: t4 stays sign_a; sum in [0x80, 0x1fe]
+    add     t6, t6, a5
+    li      t0, 0x100
+    bltu    t6, t0, bf16_add_renorm_norm                # already normalized
+    srli    t6, t6, 1
+    addi    t5, t5, 1
+    j       bf16_add_renorm_norm
 
 bf16_add_sign_diff:
     bne     a5, t6, bf16_add_mant0
@@ -606,33 +603,30 @@ bf16_add_sign_diff:
 
 bf16_add_mant0:
     bltu    t6, a5, bf16_add_mant1
-    # mant_a > mant_b
-    # t4 = sign = sign_a
-    sub     t6, t6, a5                              # t6 = mant = mant_a - mant_b
+    # mant_a > mant_b; t4 stays sign_a
+    sub     t6, t6, a5
     j       bf16_add_mant_after
 bf16_add_mant1:
     # mant_a < mant_b
-    mv      t4, a3                                  # t4 = sign = sign_b
-    sub     t6, a5, t6                              # t6 = mant = mant_b - mant_a
+    mv      t4, a3                                      # sign = sign_b
+    sub     t6, a5, t6
+    # fall into mant_after
 
 bf16_add_mant_after:
-    
-    # renorm
-    bnez    t6 , bf16_add_renorm_ue0
+    # opposite-sign renorm (result may be < 0x80 or 0)
+    bnez    t6, bf16_add_renorm_ue0
     li      a0, 0
     ret
 
 bf16_add_renorm_ue0:
-    li      t0, 0x100                               # t0 = threshold
+    li      t0, 0x100
     bltu    t6, t0, bf16_add_renorm_less
-    # mant >= 0x100
     srli    t6, t6, 1
     addi    t5, t5, 1
 
 bf16_add_renorm_less:
-    li      t0, 0x80                                # t0 = threshold
+    li      t0, 0x80
     bgeu    t6, t0, bf16_add_renorm_norm
-    # mant < 0x80
 bf16_add_renorm_less_loop:
     slli    t6, t6, 1
     addi    t5, t5, -1
