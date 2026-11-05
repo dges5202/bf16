@@ -1,5 +1,7 @@
 # `bf16_sqrt` — path-class report
 
+Canonical narrative: [`../experiments/SQRT.md`](../experiments/SQRT.md).
+
 ## Reproduce
 
 ```bash

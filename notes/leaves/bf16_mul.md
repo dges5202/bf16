@@ -1,5 +1,7 @@
 # `bf16_mul` — path-class report
 
+Canonical narrative: [`../experiments/MUL.md`](../experiments/MUL.md).
+
 ## Reproduce
 
 ```bash

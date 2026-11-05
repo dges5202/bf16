@@ -63,7 +63,8 @@ Full-domain path-class (post `c9df043` / this scan): see [`notes/leaves/`](notes
 
 **Priority:** **mul** (+14) then **div** (+8). Add/sub already below C on full hot.
 
-Per-path short-circuit tables: [`notes/leaves/README.md`](notes/leaves/README.md).
+Per-path tables: [`notes/leaves/`](notes/leaves/).  
+Canonical experiment reports: [`notes/experiments/`](notes/experiments/) (add/sub · mul · div · sqrt).
 
 ---
 

@@ -1,5 +1,7 @@
 # Experiment: soft-div loop — branched vs branchless
 
+> Folded into the canonical div report: [`../notes/experiments/DIV.md`](../notes/experiments/DIV.md).
+
 Files: [`div_loop_variants.S`](div_loop_variants.S) (`bf16_div_br` / `bf16_div_nbr`).
 
 Same gate, specials tree, renorm/pack. Soft-div is the same 16-iter restoring `(mant_a<<7)/mant_b`; only the **compare/subtract** step differs:
