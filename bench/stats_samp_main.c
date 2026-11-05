@@ -36,6 +36,14 @@ uint16_t bf16_div(uint16_t, uint16_t);
 #define N_HOT 65536u
 #endif
 
+/* OPS= filter: default all on. With -DOPS_FILTER, only -DOP_*=1 run. */
+#if !defined(OPS_FILTER)
+#define OP_MUL 1
+#define OP_ADD 1
+#define OP_SUB 1
+#define OP_DIV 1
+#endif
+
 typedef uint16_t (*binop)(uint16_t, uint16_t);
 
 static void write_n(const char *s, unsigned n)
@@ -92,6 +100,20 @@ static int is_hot(uint16_t x)
 {
     uint16_t e = (x >> 7) & 0xFF;
     return e != 0 && e != 0xFF;
+}
+
+/* Advance LCG past N_HOT hot pairs (no leaf / instret) so OPS= filters
+ * keep later ops on the same sample stream as OPS=all. */
+static void burn_hot(void)
+{
+    uint32_t n = 0;
+    while (n < N_HOT) {
+        uint16_t a = (uint16_t)randu();
+        uint16_t b = (uint16_t)(randu() >> 16);
+        if (!is_hot(a) || !is_hot(b))
+            continue;
+        n++;
+    }
 }
 
 static void measure_hot(const char *name, binop fn)
@@ -151,11 +173,30 @@ int main(void)
     puts0("rv32emu instret (CPI=1); hot-only sample; hex avgs; N_HOT=");
     put_hex32(N_HOT);
     puts0("\n");
+#if defined(OPS_FILTER)
+    puts0("OPS=filtered\n");
+#endif
 
+#if OP_MUL
     measure_hot("mul", MUL);
+#else
+    burn_hot();
+#endif
+#if OP_ADD
     measure_hot("add", ADD);
+#else
+    burn_hot();
+#endif
+#if OP_SUB
     measure_hot("sub", SUB);
+#else
+    burn_hot();
+#endif
+#if OP_DIV
     measure_hot("div", DIV);
+#else
+    burn_hot();
+#endif
 
     puts0("DONE\n");
     return 0;

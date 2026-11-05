@@ -110,29 +110,54 @@ stats-class-asm: stats_class_asm.elf
 	$(RV32EMU) $< | tee results/stats_class_asm.txt
 stats-class: stats-class-c stats-class-asm
 
+# --- op filter: OPS=all (default) | add,sub | mul | div | ... ---
+# Example while tuning add/sub only:
+#   make stats-samp-asm OPS=add,sub
+#   make path-class-asm OPS=add,sub
+OPS ?= all
+OPS_CFLAGS := $(shell python3 ops_cflags.py '$(OPS)')
+OPS_SLUG := $(shell printf '%s' '$(OPS)' | tr ',' '_' )
+ifeq ($(OPS),all)
+  SAMP_OUT_ASM := results/stats_samp_asm.txt
+  SAMP_OUT_C   := results/stats_samp_c_o2.txt
+  PATH_OUT_ASM := results/path_class_asm.txt
+  PATH_OUT_C   := results/path_class_c_o2.txt
+else
+  SAMP_OUT_ASM := results/stats_samp_asm_$(OPS_SLUG).txt
+  SAMP_OUT_C   := results/stats_samp_c_o2_$(OPS_SLUG).txt
+  PATH_OUT_ASM := results/path_class_asm_$(OPS_SLUG).txt
+  PATH_OUT_C   := results/path_class_c_o2_$(OPS_SLUG).txt
+endif
+
 # --- fast hot-only sample (~65k hot pairs / op; per-opt KPI) ---
 N_HOT ?= 65536
+SAMP_CFLAGS := -DN_HOT=$(N_HOT) $(OPS_CFLAGS)
 stats_samp_c_main.o: stats_samp_main.c
-	$(CC) $(CFLAGS) -DN_HOT=$(N_HOT) -c $< -o $@
+	$(CC) $(CFLAGS) $(SAMP_CFLAGS) -c $< -o $@
 stats_samp_asm_main.o: stats_samp_main.c
-	$(CC) $(CFLAGS) -DBENCH_ASM -DN_HOT=$(N_HOT) -c $< -o $@
+	$(CC) $(CFLAGS) $(SAMP_CFLAGS) -DBENCH_ASM -c $< -o $@
 stats_samp_c.elf: start.o perfcounter.o bf16_c_o2.o stats_samp_c_main.o linker.ld
 	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_c_o2.o stats_samp_c_main.o
 stats_samp_asm.elf: start.o perfcounter.o bf16_asm.o stats_samp_asm_main.o linker.ld
 	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_asm.o stats_samp_asm_main.o
 
 .PHONY: stats-samp-c stats-samp-asm stats-samp
-stats-samp-c: stats_samp_c.elf
+# Rebuild mains every time so OPS=/N_HOT= changes are not stale.
+stats-samp-c:
+	$(RM) stats_samp_c_main.o
+	$(MAKE) stats_samp_c.elf
 	mkdir -p results
-	$(RV32EMU) $< | tee results/stats_samp_c_o2.txt
-stats-samp-asm: stats_samp_asm.elf
+	$(RV32EMU) stats_samp_c.elf | tee $(SAMP_OUT_C)
+stats-samp-asm:
+	$(RM) stats_samp_asm_main.o
+	$(MAKE) stats_samp_asm.elf
 	mkdir -p results
-	$(RV32EMU) $< | tee results/stats_samp_asm.txt
+	$(RV32EMU) stats_samp_asm.elf | tee $(SAMP_OUT_ASM)
 stats-samp: stats-samp-c stats-samp-asm
 
 # --- full-domain path-classed instret (coarse cls + fine path) ---
 # Default skips u32 2^32 (use PATH_CLASS_CFLAGS= to include). Join: join_path_class.py
-PATH_CLASS_CFLAGS ?= -DPATH_CLASS_SKIP_U32
+PATH_CLASS_CFLAGS ?= -DPATH_CLASS_SKIP_U32 $(OPS_CFLAGS)
 path_class_c_main.o: path_class_main.c
 	$(CC) $(CFLAGS) $(PATH_CLASS_CFLAGS) -c $< -o $@
 path_class_asm_main.o: path_class_main.c
@@ -143,18 +168,24 @@ path_class_asm.elf: start.o perfcounter.o bf16_asm.o path_class_asm_main.o linke
 	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_asm.o path_class_asm_main.o
 
 .PHONY: path-class-c path-class-asm path-class path-class-quick path-class-join
-path-class-c: path_class_c.elf
+path-class-c:
+	$(RM) path_class_c_main.o
+	$(MAKE) path_class_c.elf
 	mkdir -p results
-	$(RV32EMU) $< | tee results/path_class_c_o2.txt
-path-class-asm: path_class_asm.elf
+	$(RV32EMU) path_class_c.elf | tee $(PATH_OUT_C)
+path-class-asm:
+	$(RM) path_class_asm_main.o
+	$(MAKE) path_class_asm.elf
 	mkdir -p results
-	$(RV32EMU) $< | tee results/path_class_asm.txt
+	$(RV32EMU) path_class_asm.elf | tee $(PATH_OUT_ASM)
 path-class: path-class-asm path-class-c
 path-class-join:
-	python3 join_path_class.py results/path_class_asm.txt results/path_class_c_o2.txt results/path_class_join.md
+	python3 join_path_class.py $(PATH_OUT_ASM) $(PATH_OUT_C) results/path_class_join$(if $(filter-out all,$(OPS)),_$(OPS_SLUG),).md
 path-class-quick:
-	$(MAKE) path_class_asm_main.o path_class_c_main.o PATH_CLASS_CFLAGS='-DPATH_CLASS_QUICK -DPATH_CLASS_SKIP_U32'
+	$(RM) path_class_asm_main.o path_class_c_main.o
+	$(MAKE) path_class_asm_main.o path_class_c_main.o \
+		PATH_CLASS_CFLAGS='-DPATH_CLASS_QUICK -DPATH_CLASS_SKIP_U32 $(OPS_CFLAGS)'
 	$(MAKE) path_class_asm.elf path_class_c.elf
 	mkdir -p results
-	$(RV32EMU) path_class_asm.elf | tee results/path_class_asm_quick.txt
-	$(RV32EMU) path_class_c.elf | tee results/path_class_c_o2_quick.txt
+	$(RV32EMU) path_class_asm.elf | tee results/path_class_asm_quick$(if $(filter-out all,$(OPS)),_$(OPS_SLUG),).txt
+	$(RV32EMU) path_class_c.elf | tee results/path_class_c_o2_quick$(if $(filter-out all,$(OPS)),_$(OPS_SLUG),).txt

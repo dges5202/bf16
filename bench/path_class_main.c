@@ -707,6 +707,24 @@ static void sweep_pred(const char *name, int (*fn)(uint16_t))
     puts0("\n");
 }
 
+/* OPS= filter: default all on. With -DOPS_FILTER, only -DOP_*=1 run. */
+#if !defined(OPS_FILTER)
+#define OP_SIGN 1
+#define OP_EXP 1
+#define OP_MANT 1
+#define OP_ISNAN 1
+#define OP_ISINF 1
+#define OP_ISZERO 1
+#define OP_PACK 1
+#define OP_NEGATE 1
+#define OP_U32 1
+#define OP_SQRT 1
+#define OP_MUL 1
+#define OP_ADD 1
+#define OP_SUB 1
+#define OP_DIV 1
+#endif
+
 int main(void)
 {
 #if defined(BENCH_ASM)
@@ -718,25 +736,56 @@ int main(void)
 #if defined(PATH_CLASS_QUICK)
     puts0("MODE=QUICK\n");
 #endif
+#if defined(OPS_FILTER)
+    puts0("OPS=filtered\n");
+#endif
 
+#if OP_SIGN
     sweep1("sign", SIGN, path_one);
+#endif
+#if OP_EXP
     sweep1("exp", EXP, path_one);
+#endif
+#if OP_MANT
     sweep1("mant", MANT, path_one);
+#endif
+#if OP_ISNAN
     sweep_pred("isnan", ISNAN);
+#endif
+#if OP_ISINF
     sweep_pred("isinf", ISINF);
+#endif
+#if OP_ISZERO
     sweep_pred("iszero", ISZERO);
+#endif
+#if OP_PACK
     sweep_pack();
+#endif
+#if OP_NEGATE
     sweep_negate();
+#endif
+#if OP_U32
 #if !defined(PATH_CLASS_SKIP_U32) && !defined(PATH_CLASS_QUICK)
     sweep_u32();
 #else
     puts0("== u32_to_bf16 SKIPPED ==\n");
 #endif
+#endif
+#if OP_SQRT
     sweep1("sqrt", SQRT, path_sqrt);
+#endif
+#if OP_MUL
     sweep2("mul", MUL, path_mul);
+#endif
+#if OP_ADD
     sweep2("add", ADD, path_add);
+#endif
+#if OP_SUB
     sweep2("sub", SUB, path_add); /* same hot taxonomy; +xor trampoline in leaf */
+#endif
+#if OP_DIV
     sweep2("div", DIV, path_div);
+#endif
 
     puts0("DONE\n");
     return 0;

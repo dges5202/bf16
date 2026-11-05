@@ -4,6 +4,15 @@ Full-domain **measured** ASM vs GCC `-O2` instret by control-flow path.
 
 Join: [`../../bench/results/path_class_join.md`](../../bench/results/path_class_join.md).
 
+While iterating on one leaf family, use `OPS=` so you do not re-sweep everything:
+
+```bash
+make path-class OPS=add,sub
+make path-class-join OPS=add,sub
+```
+
+Add/sub narrative report: [`../ADD_SUB_EXPERIMENT.md`](../ADD_SUB_EXPERIMENT.md).
+
 
 ## Leaves
 

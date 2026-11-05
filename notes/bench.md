@@ -5,22 +5,44 @@ measured the same way every time.
 
 ## Hard gate (before every push)
 
-1. Run **`make stats-samp-asm`** (~65k hot pairs / op).  
-2. Only then write / update numbers in this file, `PERF_TRUNCATE.md`, or any other MD.  
-3. Commit the fresh `bench/results/stats_samp_asm.txt` with the code change.  
+1. Run a **samp** for the leaves you changed (see `OPS=` below).  
+2. Only then write / update numbers in this file, leaf reports, or `PERF_TRUNCATE.md`.  
+3. Commit the fresh samp log with the code change.  
 4. No guessed avgs, no “expect −N”, no MD row without a samp line behind it.
 
 Tooling-only commits (harness/docs with **no** guest `bf16.S` / `bf16.c` change) still run samp once to confirm the KPI did not drift; say so in the commit body if flat.
 
-## Two measurement modes
+### `OPS=` — only sweep what you are editing
+
+Default `OPS=all`. While tuning **add/sub**, do **not** re-run mul/div/helpers:
+
+```bash
+cd 02-bf16/bench && source env.sh
+make stats-samp-asm OPS=add,sub     # → results/stats_samp_asm_add_sub.txt
+make path-class-asm OPS=add,sub     # full path for add+sub only (~minutes)
+make path-class-join OPS=add,sub
+```
+
+| Focus | Samp | Path full |
+| :--- | :--- | :--- |
+| add/sub | `OPS=add,sub` | `OPS=add,sub` |
+| mul | `OPS=mul` | `OPS=mul` |
+| div | `OPS=div` | `OPS=div` |
+| everything | `OPS=all` (default) | `OPS=all` |
+
+Filtered logs use a slug suffix (`_add_sub`) so they do not overwrite the all-ops files.  
+Samp still **burns** LCG draws for skipped ops (no leaf call), so add/sub pairs match `OPS=all` history.
+
+## Measurement modes
 
 | Mode | Target | Command | When |
 | :--- | :--- | :--- | :--- |
-| **samp** | ~65k **hot** pairs / op (LCG, fixed seed) | `make stats-samp-asm` | **every push** (gate above) |
+| **samp** | ~65k **hot** pairs / selected op | `make stats-samp-asm OPS=…` | **every push** (gate above) |
 | **full** | FULL 65536² classed buckets | `make stats-class-asm` (~26 min) | **milestones only** |
-| **path** | FULL domain + fine control-flow paths | `make path-class` (~28+27 min) | **path reports / milestones** |
+| **path** | FULL domain + fine paths | `make path-class OPS=…` | **path reports / milestones** |
 
-Per-leaf path reports: [`notes/leaves/`](leaves/).
+Per-leaf path reports: [`notes/leaves/`](leaves/).  
+**Add/sub experiment write-up:** [`ADD_SUB_EXPERIMENT.md`](ADD_SUB_EXPERIMENT.md).
 
 Tool: `rv32emu` + `instret` CSR. **`cycle` ≡ `instret` (CPI=1).**  
 KPI: **hot** avg (both finite normal). Hex in raw logs; decimal in tables.  
@@ -28,9 +50,9 @@ KPI: **hot** avg (both finite normal). Hex in raw logs; decimal in tables.
 
 ```bash
 cd 02-bf16/bench && source env.sh
-make stats-samp-asm          # required before every push
-# N_HOT=32768 make stats-samp-asm
-make stats-class-asm         # milestone only
+make stats-samp-asm OPS=add,sub   # typical while on add/sub
+# N_HOT=32768 make stats-samp-asm OPS=add,sub
+make path-class OPS=add,sub       # add/sub path milestone
 ```
 
 C GCC `-O2` hot reference (**samp**, same seed): **add 45 / sub 48 / mul 102 / div 96**.
@@ -67,6 +89,7 @@ Append a samp row for every later hot-path commit. Tooling-only commits stay out
 | `95974ab` | door mv dropped | 54 | 56 | 118 | 104 |
 
 Full dumps: [`PERF_TRUNCATE.md`](../PERF_TRUNCATE.md), `bench/results/stats_class_*.txt`.  
-Samp dumps: `bench/results/stats_samp_*.txt`.  
+Samp dumps: `bench/results/stats_samp_*.txt` (filtered: `*_add_sub.txt`, …).  
+Add/sub experiment report: [`ADD_SUB_EXPERIMENT.md`](ADD_SUB_EXPERIMENT.md).  
 Add hot-path vs GCC audit: [`ADD_HOT_PATH_AUDIT.md`](ADD_HOT_PATH_AUDIT.md).  
 Mul notes: [`MUL_HOT_PATH_AUDIT.md`](MUL_HOT_PATH_AUDIT.md).
