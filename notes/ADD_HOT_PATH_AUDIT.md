@@ -23,8 +23,7 @@ this easy same-sign arm alone — opposite-sign + distribution dominate the +7.
 
 ## Where ASM still pays (candidates)
 
-1. **Zero gate on every call** — hot pays 4 insn; C only `bnez exp` (2) when both
-   normals. *Not* the planned next patch; listed for later.
+1. **Zero gate** — **done** (exp-first `bnez`); hot normals pay 2 not 4.
 2. **Eager `andi` mant** — 2 insn before we know we are hot; C extracts mant after
    exp/sign gates. → **step 2**.
 3. **Same-sign pack** — `li 255` twice on Inf path; finite path is 6 insn vs C’s 9

@@ -540,10 +540,15 @@ bf16_add:
     beq     t5, t0, bf16_add_special_ff
     beq     a4, t0, bf16_add_special_ff
 
-    slli    t0, a0, 17                                  # mag_a == 0? (±0)
+    # zero gate (GCC-style): hot normals pay 2x bnez exp, not 2x (slli+beqz mag)
+    bnez    t5, bf16_add_chk_b_exp                      # exp_a != 0 -> not ±0/sub
+    slli    t0, a0, 17
+    beqz    t0, bf16_add_special_zero                   # exp_a==0 && mag==0
+bf16_add_chk_b_exp:
+    bnez    a4, bf16_add_hot                            # exp_b != 0 -> hot
+    slli    t0, a1, 17
     beqz    t0, bf16_add_special_zero
-    slli    t0, a1, 17                                  # mag_b == 0?
-    beqz    t0, bf16_add_special_zero
+    # exp_b==0 && mag!=0 (subnormal): fall into hot
 
 bf16_add_hot:
     /*
