@@ -628,12 +628,7 @@ bf16_add_opp_after:
 bf16_add_opp_mant0:
     bltu    t6, a5, bf16_add_opp_mant1
     sub     t6, t6, a5                                  # sign stays sign_a
-    j       bf16_add_opp_renorm
-
-bf16_add_opp_mant1:
-    mv      t4, a3                                      # sign = sign_b
-    sub     t6, a5, t6
-    # fall into renorm (diff in [1, 0xFF]; equal mags already returned +0)
+    # fall into renorm (ma>mb)
 
 bf16_add_opp_renorm:
     /*
@@ -659,6 +654,11 @@ bf16_add_opp_pack_fin:
     andi    t0, t6, 0x7F
     or      a0, a0, t0
     ret
+
+bf16_add_opp_mant1:
+    mv      t4, a3                                      # sign = sign_b
+    sub     t6, a5, t6
+    j       bf16_add_opp_renorm
 
 bf16_add_opp_exp:
     sub     t0, a4, t5
