@@ -613,12 +613,17 @@ bf16_add_ss_shift_b:
     j       bf16_add_ss_after
 
     # -------- opposite sign --------
+    /*
+     * Split on ea<eb early.  When ea<eb and dexp>=1, ma is right-shifted (or
+     * zeroed if dexp>=8) so mb>ma always — skip equal / ma>mb compares and
+     * set sign_b up front.  Path-gap: on_lt_mb was the only hot loser vs C.
+     */
 bf16_add_hot_opp:
-    bltu    t5, a4, bf16_add_opp_exp
+    bltu    t5, a4, bf16_add_opp_lt
     sub     t0, t5, a4
     bgeu    t0, t3, bf16_add_opp_shift_b
     srl     a5, a5, t0
-    # fall into opp_after
+    # fall into opp_after (ea>=eb)
 
 bf16_add_opp_after:
     bne     a5, t6, bf16_add_opp_mant0
@@ -663,16 +668,20 @@ bf16_add_opp_mant1:
     sub     t6, a5, t6
     j       bf16_add_opp_renorm
 
-bf16_add_opp_exp:
+bf16_add_opp_lt:
+    /* ea < eb: ma shifted/zeroed => mb > ma always; sign = sign_b */
     sub     t0, a4, t5
     mv      t5, a4
-    bgeu    t0, t3, bf16_add_opp_shift_a
+    mv      t4, a3
+    bgeu    t0, t3, bf16_add_opp_lt_wide
     srl     t6, t6, t0
-    j       bf16_add_opp_after
+    sub     t6, a5, t6
+    j       bf16_add_opp_renorm
 
-bf16_add_opp_shift_a:
-    li      t6, 0
-    j       bf16_add_opp_after
+bf16_add_opp_lt_wide:
+    /* dexp>=8: ma=0, result=mb already norm, exp=eb */
+    mv      t6, a5
+    j       bf16_add_opp_pack_fin
 
 bf16_add_opp_shift_b:
     li      a5, 0

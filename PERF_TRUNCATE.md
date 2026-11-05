@@ -59,7 +59,7 @@ Domains: helpers/sqrt/negate **65536**; pack **2×256×128**; binary **65536²**
 
 **Priority:** **mul** (gap +14) after add/sub pause at 51/53; **div** +8; **sqrt** tied.
 
-Add path (samp): opp renorm → 46/48; already-norm skip bgez sum ≈ −0.5/call (avg still 46/48). Mul **116**. Full classed pending next milestone.
+Add path (samp): opp `ea<eb` specialize → **44/46** (below C 45/48). Mul **116**. Full classed pending next milestone.
 
 ---
 

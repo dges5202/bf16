@@ -1,66 +1,35 @@
-# bf16_add / sub — hot path vs GCC -O2 (post-`3d32f24`)
+# bf16_add / sub — hot path vs GCC -O2 (post opp `ea<eb` specialize)
 
-Samp KPI (fixed seed, `N_HOT=65536`): `bench/results/stats_samp_*.txt` (re-run with this doc).
+Samp KPI (fixed seed, `N_HOT=65536`): `bench/results/stats_samp_*.txt`.
 
 | Op | ASM avg | C avg | gap | ASM sum | C sum |
 | :--- | ---: | ---: | ---: | ---: | ---: |
-| add | **46** | **45** | **+1** | 0x2e0adc | 0x2d61f0 |
-| sub | **48** | **48** | **0** | 0x300830 | 0x3064ec |
+| add | **44** | **45** | **−1** | 0x2c96fd | 0x2d61f0 |
+| sub | **46** | **48** | **−2** | 0x2e983e | 0x3064ec |
 
-Sub **sum** is already below C (48.03 vs 48.39); floor hides it. Add body gap ≈ +0.66 before floor.
+Both avgs and sums beat C. Cross `make test`: ALL OK (same sink as pre-change on samp).
 
-Disasm: hand `bf16.S`; C [`gcc_o2_bf16_add_ref.dis`](gcc_o2_bf16_add_ref.dis).  
-Counts below are **guest retired in the leaf** (no `get_instret` wrap). Wrap is ~same both sides; the +1 avg gap is real mix, not wrap.
+## Path-gap finding (why +1 lingered)
 
-## Dynamic counts (approx)
+Per-bucket instret (ASM vs C, same LCG) showed **every** same-sign / `opp_left` bucket already ahead of C. The whole residual loss was:
 
-| Scenario | ASM | GCC -O2 | Winner |
-| :--- | ---: | ---: | :--- |
-| Gate through `\|0x80` / `li 8` (both normal) | ~16 | ~14–16 | ≈ tie |
-| Same-sign easy (`ea≥eb`, `dexp∈[1,7]`, sum `<0x100`) | **~30** | **~38** | **ASM** |
-| Opposite already-norm (`ma>mb`, diff `≥0x80`) | **~32** | **~39** | **ASM** |
-| Opposite left-renorm (1 iter) | ~37 | ~similar + pack tax | ≈ tie / ASM |
+| Bucket | n (≈) | Pre | Issue |
+| :--- | ---: | :--- | :--- |
+| `on_ge_ma` (ea≥eb, ma>mb, already-norm) | 16k | ASM ahead | fall-through align+sub |
+| **`on_lt_mb` (ea<eb, mb>ma, already-norm)** | **16k** | **ASM 48 vs C 44** | paid `j` into shared after + equal/ma compares |
 
-GCC pack (`.L118`) is **9** insn (`slli16/srli16/mv`); ours is **6**. That alone is most of the easy-path win.
+When **ea < eb** and dexp≥1, `ma` is right-shifted (or zero if dexp≥8) ⇒ **`mb > ma` always**. Equal and ma>mb arms are dead on that side.
 
-**Implication:** easy same/opp arms already beat `-O2`. Residual **add +1** avg is path mix (not a single lost arm). Opposite **left renorm is rare** on this samp (~479/65536 need `k≥1`, of which ~321 are `k=1`) — it cannot explain ~+0.66 alone.
+## Fix
 
-## Still different (not free wins)
+Specialize `bf16_add_opp_lt`: set `sign_b` early, `sub mb-ma`, skip equal/ma>mb; `dexp≥8` → `mant=mb`, pack (skip renorm).
 
-1. **Same-sign `dexp==0`** — still pays `srl x0` and a failing `li 0x100; bltu`. A dedicated arm needs an extra `beqz` on the **common** `dexp≠0` path → measured **~+0.24/call regression**; **not kept**.
-2. **`li t3,8`** before sign split — C loads `7` inside align. Wash / tiny.
-3. **Opposite left-shift loop** — tried multi-bit; **not kept** (see below). 1-bit loop stays.
-4. **sub** — `xor` + fall into `bf16_add` vs C `auipc/jr` trampoline; structure already fine (tied at 48).
+Post path-gap: `on_lt_mb` ASM **42** vs C **44** (ahead). Total sum_gap strongly negative.
 
 ## Already taken (do not redo)
 
-Door `mv` drop; same-sign skip left renorm; early same/opp split; align `srl` fall-through; defer mant `andi`; same-sign Inf skip when no `exp++`; exp-first zero gate; opp drop `≥0x100`/Inf; opp skip `bgez` when already-norm; `mant0` fall into renorm.
+Door `mv`; same-sign skip left renorm; early same/opp split; align `srl` fall-through; defer mant; Inf skip; exp-first zero; opp drop ≥0x100/Inf; skip `bgez`; `mant0` fall; **opp `ea<eb` specialize**; rejected: `dexp==0` arm, multi-bit left renorm, align+moved tails.
 
-### Tried — opposite multi-bit / ctz-ish left renorm (**rejected**)
+## Optional further
 
-RV32I has no `clz`/`ctz`. Host hist on the same LCG as `stats_samp` (`rng=0xC0FFEE`): among hot pairs, opp left-renorm `k` counts ≈ `0:32375, 1:321, 2:85, 3:42, 4:19, 5:6, 6:5, 7:1`.
-
-| Variant | Result | Notes |
-| :--- | :--- | :--- |
-| Binary **4/2/1** replace loop | add sum **0x2e0adc → 0x2e0fa9** (~**+0.019**/call); sub sum **+0x501**; avg still 46/48; **sink unchanged** (bit-exact) | `max` dropped (heavy cancel faster) but `k=1` pays ~+4 insn and dominates |
-| Hybrid force-1 `<<` + ladder for `k≥2` | modeled **~+0.006**/call; not worth a samp keep | Saves only `k≥5` (~12 samples); taxes `k=2..4` |
-
-**Not kept.** Closing add +1 needs leverage elsewhere (or accept +1).
-
-## To go **below** C (add ≤44, sub ≤47)
-
-Small fall-through / skip-check ideas are largely mined. Multi-bit opp renorm is mined too.
-
-| Idea | Risk | Notes |
-| :--- | :--- | :--- |
-| Accept add +1 | — | Easy arms already ahead of GCC |
-| Milestone **full** classed | — | Confirm samp vs full domain |
-| Mul gap (+14) | — | Separate audit |
-
-## Step log (this file)
-
-| When | Action |
-| :--- | :--- |
-| Earlier series | Door, renorm split, zero gate, opp slim — see `bench.md` |
-| Prior | Refresh audit to match post-`3d32f24` reality; re-samp |
-| Now | Try binary/hybrid opp left renorm; measure reject; restore 1-bit loop |
+Add/sub already below C on samp. Next ROI is **mul (+14)** / **div (+8)**. Milestone full classed when ready.
