@@ -28,7 +28,7 @@ C GCC `-O2` hot avgs (stable reference): **add 45 / sub 48 / mul 102 / div 96**.
 | Commit | Change | add | sub | mul | div | add−C |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: |
 | *(pre-git)* | truncate ASM with door `mv a6,a0` / `mv a7,a1` on add | 56 | 58 | 118 | 104 | +11 |
-| `TBD` | drop add door copies; unpack/gate from `a0`/`a1` | 54 | 56 | 118 | 104 | +9 |
+| `95974ab` | drop add door copies; unpack/gate from `a0`/`a1` | 54 | 56 | 118 | 104 | +9 |
 
 Append a row for every later commit that changes `bf16_add` / `bf16_sub` / `bf16_mul` / `bf16_div` hot path. Tooling-only commits stay out.
 
