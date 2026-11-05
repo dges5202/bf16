@@ -640,15 +640,14 @@ bf16_add_opp_renorm:
      * Opposite sub of two |0x80 mants: result in [1, 0xFF] — never >=0x100
      * (no right shift) and exp only stays or shrinks (no Inf).  May need
      * left renorm and exp<0 -> +0.
+     * Already-norm (mant>=0x80): exp unchanged >=1 -> pack_fin (skip bgez).
      */
     li      t0, 0x80
-    bgeu    t6, t0, bf16_add_opp_pack
+    bgeu    t6, t0, bf16_add_opp_pack_fin
 bf16_add_opp_renorm_loop:
     slli    t6, t6, 1
     addi    t5, t5, -1
     bltu    t6, t0, bf16_add_opp_renorm_loop
-
-bf16_add_opp_pack:
     bgez    t5, bf16_add_opp_pack_fin
     li      a0, 0
     ret
