@@ -49,6 +49,8 @@ C GCC `-O2` hot reference (**samp**, same seed): **add 45 / sub 48 / mul 102 / d
 
 Tried align fall-through **with** moving sign tails (earlier): samp **regressed** ~+0.44 — not kept. This row keeps sign specialized per arm.
 
+Tried same-sign `dexp==0` fast path: samp **regressed** ~+0.24/call (extra `beqz` on common arm) — **not kept**.
+
 Append a samp row for every later hot-path commit. Tooling-only commits stay out.
 
 ## Log — full (milestones)
