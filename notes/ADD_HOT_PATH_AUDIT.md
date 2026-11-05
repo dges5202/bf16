@@ -28,8 +28,8 @@ this easy same-sign arm alone — opposite-sign + distribution dominate the +7.
    exp/sign gates. → **step 2**.
 3. **Same-sign pack** — `li 255` twice on Inf path; finite path is 6 insn vs C’s 9
    (we are already leaner). Possible: share Inf const / fall-through into pack_fin. → **step 3**.
-4. **Opposite-sign renorm** — still full left-shift loop + `bgez`; likely residual
-   avg gap. Leave until after 2–3 or mul milestone.
+4. **Opposite-sign renorm** — **done**: drop ≥0x100 / Inf (diff ∈ [1,0xFF]); keep
+   left loop + `bgez`. Residual add gap ~+1 vs C.
 
 ## Already taken (do not redo)
 

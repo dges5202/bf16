@@ -51,15 +51,15 @@ Domains: helpers/sqrt/negate **65536**; pack **2×256×128**; binary **65536²**
 | Op | C hot avg | ASM hot avg | gap |
 |----|----------:|------------:|----:|
 | `mul` | 102 | **116** | **+14 (+13.7%)** |
-| `add` | 45 | **49** | **+4 (+8.9%)** |
-| `sub` | 48 | **51** | **+3 (+6.3%)** |
+| `add` | 45 | **46** | **+1 (+2.2%)** |
+| `sub` | 48 | **48** | **0 (tied)** |
 | `div` | 96 | **104** | **+8 (+8.3%)** |
 | `sqrt` | 276 | 275 | −1 (~tied) |
 | `u32_to_bf16` | 23 | 22 | −1 (ASM slightly better) |
 
 **Priority:** **mul** (gap +14) after add/sub pause at 51/53; **div** +8; **sqrt** tied.
 
-Add path (samp): … Inf-skip → 51; exp-first zero gate → **49** / sub **51**. Mul door → **116**. Full classed pending next milestone.
+Add path (samp): … zero gate → 49/51; opp renorm slim → **46** / sub **48** (tied C). Mul door → **116**. Full classed pending next milestone.
 
 ---
 

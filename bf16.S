@@ -633,19 +633,14 @@ bf16_add_opp_mant0:
 bf16_add_opp_mant1:
     mv      t4, a3                                      # sign = sign_b
     sub     t6, a5, t6
+    # fall into renorm (diff in [1, 0xFF]; equal mags already returned +0)
 
 bf16_add_opp_renorm:
-    bnez    t6, bf16_add_opp_renorm_ue0
-    li      a0, 0
-    ret
-
-bf16_add_opp_renorm_ue0:
-    li      t0, 0x100
-    bltu    t6, t0, bf16_add_opp_renorm_less
-    srli    t6, t6, 1
-    addi    t5, t5, 1
-
-bf16_add_opp_renorm_less:
+    /*
+     * Opposite sub of two |0x80 mants: result in [1, 0xFF] — never >=0x100
+     * (no right shift) and exp only stays or shrinks (no Inf).  May need
+     * left renorm and exp<0 -> +0.
+     */
     li      t0, 0x80
     bgeu    t6, t0, bf16_add_opp_pack
 bf16_add_opp_renorm_loop:
@@ -654,17 +649,8 @@ bf16_add_opp_renorm_loop:
     bltu    t6, t0, bf16_add_opp_renorm_loop
 
 bf16_add_opp_pack:
-    bgez    t5, bf16_add_opp_pack_exp
+    bgez    t5, bf16_add_opp_pack_fin
     li      a0, 0
-    ret
-
-bf16_add_opp_pack_exp:
-    li      t0, 255
-    bltu    t5, t0, bf16_add_opp_pack_fin
-    slli    a0, t4, 15
-    li      t0, 0xFF
-    slli    t0, t0, 7
-    or      a0, a0, t0
     ret
 
 bf16_add_opp_pack_fin:
