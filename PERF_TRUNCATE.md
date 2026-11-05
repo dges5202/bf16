@@ -50,16 +50,16 @@ Domains: helpers/sqrt/negate **65536**; pack **2×256×128**; binary **65536²**
 
 | Op | C hot avg | ASM hot avg | gap |
 |----|----------:|------------:|----:|
-| `mul` | 102 | **118** | **+16 (+15.7%)** |
+| `mul` | 102 | **116** | **+14 (+13.7%)** |
 | `add` | 45 | **51** | **+6 (+13.3%)** |
 | `sub` | 48 | **53** | **+5 (+10.4%)** |
 | `div` | 96 | **104** | **+8 (+8.3%)** |
 | `sqrt` | 276 | 275 | −1 (~tied) |
 | `u32_to_bf16` | 23 | 22 | −1 (ASM slightly better) |
 
-**Priority:** close **add/sub** then **mul**; **div** already closest among hot binaries; **sqrt** tied.
+**Priority:** **mul** (gap +14) after add/sub pause at 51/53; **div** +8; **sqrt** tied.
 
-Door `mv` drop: hot **−2** (add 56→54). Same-sign skip left renorm: **−2** (add 54→52). Early same/opp + align srl fall-through: sub **54→53**. Same-sign skip Inf when no exp++: add **52→51** (samp). Full classed pending next milestone.
+Add path (samp): door −2, same-sign renorm −2, early-split/align, Inf-skip → **51**. Mul door `mv` drop → **116**. Full classed pending next milestone.
 
 ---
 

@@ -175,11 +175,11 @@ bf16_mul:
      * bf16_mul — truncate product; mirrors bf16.c.
      *
      * -------------------- registers --------------------
-     *   door:  a0=a a1=b -> a6=a a7=b
+     *   door:  a0=a a1=b kept for cold (no a6/a7 copies)
      *   unpack: t4=sign_a t5=exp_a | a3=sign_b then sign_xor; a4=exp_b
      *   hot:    t6=mant_a|hid  a5=mant_b|hid  a4=exp_a+exp_b-bias
      *           a1=product  a3=sign_xor; scratch t0-t3 t5(count)
-     *   cold:   t1=mag_a t2=mag_b t0=0x7F80; a3=sign_xor
+     *   cold:   t1=mag_a t2=mag_b t0=0x7F80; a3=sign_xor; a0/a1 originals
      *
      * -------------------- paths ------------------------
      *   Gate (cheap, no 0x7F80): exp==0xFF | mag==0 (slli 17) either side
@@ -192,15 +192,12 @@ bf16_mul:
      * Soft mul (no M): 8-iter (mant_b&1) mask-add, shift mant_a.
      * Must special-case before multiply (Inf*0 -> NaN, not a finite product).
      */
-    mv      a6, a0                                      # a6 = a
-    mv      a7, a1                                      # a7 = b
-
-    srli    t4, a6, 15                                  # t4 = sign_a
-    srli    t5, a6, 7
+    srli    t4, a0, 15                                  # t4 = sign_a
+    srli    t5, a0, 7
     andi    t5, t5, 0xFF                                # t5 = 8-bit exp_a
 
-    srli    a3, a7, 15                                  # a3 = sign_b
-    srli    a4, a7, 7
+    srli    a3, a1, 15                                  # a3 = sign_b
+    srli    a4, a1, 7
     andi    a4, a4, 0xFF                                # a4 = 8-bit exp_b
     xor     a3, t4, a3                                  # a3 = sign_xor
 
@@ -210,18 +207,18 @@ bf16_mul:
     beq     a4, t0, bf16_mul_specialcase
 
     # decision exp == 0 && mant == 0 (±0 via slli 17)
-    slli    t0, a6, 17                                  # t0 = (a << 17)
+    slli    t0, a0, 17                                  # t0 = (a << 17)
     beqz    t0, bf16_mul_specialcase
-    slli    t0, a7, 17                                  # t0 = (b << 17)
+    slli    t0, a1, 17                                  # t0 = (b << 17)
     beqz    t0, bf16_mul_specialcase
 
     # Normal case — attach implicit 1 when exp != 0
-    andi    t6, a6, 0x7F                                # t6 = 7-bit mant_a
+    andi    t6, a0, 0x7F                                # t6 = 7-bit mant_a
     snez    t0, t5                                      # t0 = 1 if exp != 0
     slli    t0, t0, 7                                   # t0 = 0 or 0x80
     or      t6, t6, t0                                  # if exp_a != 0, mant_a | 0x80
 
-    andi    a5, a7, 0x7F                                # a5 = 7-bit mant_b
+    andi    a5, a1, 0x7F                                # a5 = 7-bit mant_b
     snez    t0, a4                                      # t0 = 1 if exp != 0
     slli    t0, t0, 7                                   # t0 = 0 or 0x80
     or      a5, a5, t0                                  # if exp_b != 0, mant_b | 0x80
@@ -295,13 +292,13 @@ bf16_mul_pack:
      *        mag > 0x7F80 -> NaN; Inf*0 / 0*Inf -> NaN; either Inf -> Inf;
      *        else +/-0 with sign_xor.  Same rules as C, fewer encode insns.
      *
-     * Entry: a3=sign_xor; a6/a7 originals (pre-hot).  Out-of-line nan/inf rets.
+     * Entry: a3=sign_xor; a0/a1 originals (pre-hot).  Out-of-line nan/inf rets.
      */
 bf16_mul_specialcase:
     li      t0, 0x7F80
-    slli    t1, a6, 17  
+    slli    t1, a0, 17
     srli    t1, t1, 17                                  # t1 = mag_a
-    slli    t2, a7, 17
+    slli    t2, a1, 17
     srli    t2, t2, 17                                  # t2 = mag_b
     
     bltu    t0, t1, bf16_mul_nan
