@@ -52,4 +52,5 @@ Append a samp row for every later hot-path commit. Tooling-only commits stay out
 | `95974ab` | door mv dropped | 54 | 56 | 118 | 104 |
 
 Full dumps: [`PERF_TRUNCATE.md`](../PERF_TRUNCATE.md), `bench/results/stats_class_*.txt`.  
-Samp dumps: `bench/results/stats_samp_*.txt`.
+Samp dumps: `bench/results/stats_samp_*.txt`.  
+Add hot-path vs GCC audit: [`ADD_HOT_PATH_AUDIT.md`](ADD_HOT_PATH_AUDIT.md).
