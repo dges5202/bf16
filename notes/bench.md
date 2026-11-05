@@ -3,33 +3,42 @@
 Same idea as `03-gcd/notes/bench.md`: one row per commit that changes guest hot paths,
 measured the same way every time.
 
-## How to read the numbers
+## Two measurement modes
 
-Tool: `rv32emu` + `instret` CSR (`bench/stats_class_main.c`).  
-**`cycle` ≡ `instret` (CPI=1).** Use for relative ASM vs GCC `-O2` and for HW2 budgets.
+| Mode | Target | Command | When |
+| :--- | :--- | :--- | :--- |
+| **samp** | ~65k **hot** pairs / op (LCG, fixed seed) | `make stats-samp-asm` | **every** opt commit |
+| **full** | FULL 65536² classed buckets | `make stats-class-asm` (~26 min) | **milestones only** |
 
-KPI for add/sub/mul/div optimization: **hot** bucket avg (both operands finite normal).  
-Cold buckets (nan/inf/zero/sub) are logged but not the primary target.
-
-Reproduce:
+Tool: `rv32emu` + `instret` CSR. **`cycle` ≡ `instret` (CPI=1).**  
+KPI: **hot** avg (both finite normal). Hex in raw logs; decimal in tables.  
+`get_instret` wrap included. Samp also prints `sum` (low 32) so sub-integer moves show up before avg ticks.
 
 ```bash
 cd 02-bf16/bench && source env.sh
-make stats-class-asm    # ~26 min here; C baseline: make stats-class-c
-# logs: results/stats_class_asm.txt  results/stats_class_c_o2.txt
+make stats-samp-asm          # default per-opt (~seconds)
+# N_HOT=32768 make stats-samp-asm
+make stats-class-asm         # milestone only
 ```
 
-Hex in the raw logs; decimal in the table below. `get_instret` wrap is included (~few insn).
+C GCC `-O2` hot reference (**samp**, same seed): **add 45 / sub 48 / mul 102 / div 96**.
 
-C GCC `-O2` hot avgs (stable reference): **add 45 / sub 48 / mul 102 / div 96**.
+## Log — samp (ASM hot avg)
 
-## Log (ASM hot avg)
+| Commit | Change | add | sub | mul | div | add−C | sum Δ add |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | :--- |
+| `95974ab` | drop add door `mv` a6/a7 | 54 | 56 | 118 | 104 | +9 | (full also 54/56) |
 
-| Commit | Change | add | sub | mul | div | add−C |
-| :--- | :--- | ---: | ---: | ---: | ---: | ---: |
-| *(pre-git)* | truncate ASM with door `mv a6,a0` / `mv a7,a1` on add | 56 | 58 | 118 | 104 | +11 |
-| `95974ab` | drop add door copies; unpack/gate from `a0`/`a1` | 54 | 56 | 118 | 104 | +9 |
+Tried align common-path fall-through (uncommon tails after `ret`): samp **regressed** ~+0.44 insn/call on add/sub — **not kept**.
 
-Append a row for every later commit that changes `bf16_add` / `bf16_sub` / `bf16_mul` / `bf16_div` hot path. Tooling-only commits stay out.
+Append a samp row for every later hot-path commit. Tooling-only commits stay out.
 
-Full bucket dumps: [`PERF_TRUNCATE.md`](../PERF_TRUNCATE.md) and `bench/results/stats_class_*.txt`.
+## Log — full (milestones)
+
+| Commit | Milestone | add | sub | mul | div |
+| :--- | :--- | ---: | ---: | ---: | ---: |
+| *(pre-git)* | door mv present | 56 | 58 | 118 | 104 |
+| `95974ab` | door mv dropped | 54 | 56 | 118 | 104 |
+
+Full dumps: [`PERF_TRUNCATE.md`](../PERF_TRUNCATE.md), `bench/results/stats_class_*.txt`.  
+Samp dumps: `bench/results/stats_samp_*.txt`.

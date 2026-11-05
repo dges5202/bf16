@@ -16,11 +16,14 @@ Commit log (hot KPI): [`notes/bench.md`](notes/bench.md)
 
 ```bash
 cd bench && source env.sh
-make stats-class          # C then ASM; ~27 min each on this machine
+make stats-samp-asm       # per-opt KPI: ~65k hot pairs / op (seconds)
+make stats-class          # milestone only: FULL domain; ~27 min each
 # logs:
+#   results/stats_samp_*.txt
 #   results/stats_class_c_o2.txt
 #   results/stats_class_asm.txt
 #   results/STATS_CLASS_SUMMARY.md
+# commit log: notes/bench.md
 ```
 
 ## rv32emu limit

@@ -1,0 +1,7 @@
+stats_samp=ASM hand bf16.S
+rv32emu instret (CPI=1); hot-only sample; hex avgs; N_HOT=00010000
+mul.hot n=00010000 draws=00010426 avg=00000076 sum=00769b63 max=00000078 wa=0000c675 wb=000080c2 sink=800a097d
+add.hot n=00010000 draws=000103fc avg=00000036 sum=00361497 max=0000004c wa=00005b87 wb=0000db86 sink=95582f69
+sub.hot n=00010000 draws=00010415 avg=00000038 sum=00381333 max=0000004e wa=0000794d wb=0000794c sink=9531a81c
+div.hot n=00010000 draws=000103ce avg=00000068 sum=0068b53f max=00000071 wa=0000562b wb=0000baac sink=7f6a1aec
+DONE

@@ -109,3 +109,23 @@ stats-class-asm: stats_class_asm.elf
 	mkdir -p results
 	$(RV32EMU) $< | tee results/stats_class_asm.txt
 stats-class: stats-class-c stats-class-asm
+
+# --- fast hot-only sample (~65k hot pairs / op; per-opt KPI) ---
+N_HOT ?= 65536
+stats_samp_c_main.o: stats_samp_main.c
+	$(CC) $(CFLAGS) -DN_HOT=$(N_HOT) -c $< -o $@
+stats_samp_asm_main.o: stats_samp_main.c
+	$(CC) $(CFLAGS) -DBENCH_ASM -DN_HOT=$(N_HOT) -c $< -o $@
+stats_samp_c.elf: start.o perfcounter.o bf16_c_o2.o stats_samp_c_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_c_o2.o stats_samp_c_main.o
+stats_samp_asm.elf: start.o perfcounter.o bf16_asm.o stats_samp_asm_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_asm.o stats_samp_asm_main.o
+
+.PHONY: stats-samp-c stats-samp-asm stats-samp
+stats-samp-c: stats_samp_c.elf
+	mkdir -p results
+	$(RV32EMU) $< | tee results/stats_samp_c_o2.txt
+stats-samp-asm: stats_samp_asm.elf
+	mkdir -p results
+	$(RV32EMU) $< | tee results/stats_samp_asm.txt
+stats-samp: stats-samp-c stats-samp-asm
