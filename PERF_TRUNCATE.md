@@ -48,18 +48,22 @@ Domains: helpers/sqrt/negate **65536**; pack **2×256×128**; binary **65536²**
 
 ## Hot-path focus (optimize these)
 
-| Op | C hot avg | ASM hot avg | gap |
-|----|----------:|------------:|----:|
-| `mul` | 102 | **116** | **+14 (+13.7%)** |
-| `add` | 45 | **46** | **+1 (+2.2%)** |
-| `sub` | 48 | **48** | **0 (tied)** |
-| `div` | 96 | **104** | **+8 (+8.3%)** |
-| `sqrt` | 276 | 275 | −1 (~tied) |
-| `u32_to_bf16` | 23 | 22 | −1 (ASM slightly better) |
+Full-domain path-class (post `c9df043` / this scan): see [`notes/leaves/`](notes/leaves/).
 
-**Priority:** **mul** (gap +14) after add/sub pause at 51/53; **div** +8; **sqrt** tied.
+| Op | C hot avg | ASM hot avg | gap | Source |
+|----|----------:|------------:|----:|:---|
+| `mul` | 102 | **116** | **+14** | path_class full hot |
+| `add` | 45 | **44** | **−1** | path_class full hot |
+| `sub` | 48 | **46** | **−2** | path_class full hot |
+| `div` | 96 | **104** | **+8** | path_class full hot |
+| `sqrt` | 527/534† | 523/531† | −4/−3 | path even/odd; overall still ~tied |
+| `u32_to_bf16` | 23 | 22 | −1 | prior stats_class |
 
-Add path (samp): opp `ea<eb` specialize → **44/46** (below C 45/48). Mul **116**. Full classed pending next milestone.
+† sqrt hot split by even/odd unbiased exp (bisect dominates).
+
+**Priority:** **mul** (+14) then **div** (+8). Add/sub already below C on full hot.
+
+Per-path short-circuit tables: [`notes/leaves/README.md`](notes/leaves/README.md).
 
 ---
 

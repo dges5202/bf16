@@ -18,6 +18,9 @@ Tooling-only commits (harness/docs with **no** guest `bf16.S` / `bf16.c` change)
 | :--- | :--- | :--- | :--- |
 | **samp** | ~65k **hot** pairs / op (LCG, fixed seed) | `make stats-samp-asm` | **every push** (gate above) |
 | **full** | FULL 65536² classed buckets | `make stats-class-asm` (~26 min) | **milestones only** |
+| **path** | FULL domain + fine control-flow paths | `make path-class` (~28+27 min) | **path reports / milestones** |
+
+Per-leaf path reports: [`notes/leaves/`](leaves/).
 
 Tool: `rv32emu` + `instret` CSR. **`cycle` ≡ `instret` (CPI=1).**  
 KPI: **hot** avg (both finite normal). Hex in raw logs; decimal in tables.  

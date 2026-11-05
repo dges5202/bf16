@@ -129,3 +129,32 @@ stats-samp-asm: stats_samp_asm.elf
 	mkdir -p results
 	$(RV32EMU) $< | tee results/stats_samp_asm.txt
 stats-samp: stats-samp-c stats-samp-asm
+
+# --- full-domain path-classed instret (coarse cls + fine path) ---
+# Default skips u32 2^32 (use PATH_CLASS_CFLAGS= to include). Join: join_path_class.py
+PATH_CLASS_CFLAGS ?= -DPATH_CLASS_SKIP_U32
+path_class_c_main.o: path_class_main.c
+	$(CC) $(CFLAGS) $(PATH_CLASS_CFLAGS) -c $< -o $@
+path_class_asm_main.o: path_class_main.c
+	$(CC) $(CFLAGS) $(PATH_CLASS_CFLAGS) -DBENCH_ASM -c $< -o $@
+path_class_c.elf: start.o perfcounter.o bf16_c_o2.o path_class_c_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_c_o2.o path_class_c_main.o
+path_class_asm.elf: start.o perfcounter.o bf16_asm.o path_class_asm_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_asm.o path_class_asm_main.o
+
+.PHONY: path-class-c path-class-asm path-class path-class-quick path-class-join
+path-class-c: path_class_c.elf
+	mkdir -p results
+	$(RV32EMU) $< | tee results/path_class_c_o2.txt
+path-class-asm: path_class_asm.elf
+	mkdir -p results
+	$(RV32EMU) $< | tee results/path_class_asm.txt
+path-class: path-class-asm path-class-c
+path-class-join:
+	python3 join_path_class.py results/path_class_asm.txt results/path_class_c_o2.txt results/path_class_join.md
+path-class-quick:
+	$(MAKE) path_class_asm_main.o path_class_c_main.o PATH_CLASS_CFLAGS='-DPATH_CLASS_QUICK -DPATH_CLASS_SKIP_U32'
+	$(MAKE) path_class_asm.elf path_class_c.elf
+	mkdir -p results
+	$(RV32EMU) path_class_asm.elf | tee results/path_class_asm_quick.txt
+	$(RV32EMU) path_class_c.elf | tee results/path_class_c_o2_quick.txt
