@@ -535,61 +535,40 @@ bf16_add:
     srli    a4, a1, 7
     andi    a4, a4, 0xFF                                # a4 = 8-bit exp_b
 
-    # gate
+    # gate: hot (exp!=0xFF and exp!=0) falls through. Taken branches are the rare
+    # exits. RV32_5S charges ~2 cycles per taken branch; the old bnez-to-hot
+    # pair was taken on every normal.
     li      t0, 0xFF
     beq     t5, t0, bf16_add_special_ff
     beq     a4, t0, bf16_add_special_ff
-
-    # zero gate (GCC-style): hot normals pay 2x bnez exp, not 2x (slli+beqz mag)
-    bnez    t5, bf16_add_chk_b_exp                      # exp_a != 0 -> not ±0/sub
-    slli    t0, a0, 17
-    beqz    t0, bf16_add_special_zero                   # exp_a==0 && mag==0
-bf16_add_chk_b_exp:
-    bnez    a4, bf16_add_hot                            # exp_b != 0 -> hot
-    slli    t0, a1, 17
-    beqz    t0, bf16_add_special_zero
-    # exp_b==0 && mag!=0 (subnormal): fall into hot
+    beqz    t5, bf16_add_exp_a_zero
+    beqz    a4, bf16_add_exp_b_zero
 
 bf16_add_hot:
     /*
-     * Hot body: extract mant; |0x80; align; add or sub; renorm; pack.
-     *
-     * Early same/opposite split (GCC -O2 style): after |0x80, bne signs so
-     * each arm has its own align+epilogue — same-sign skips left renorm and
-     * exp<0 check; opposite keeps full renorm.
-     *
-     * Align: common (max=exp_a, dexp<8) srl falls into that arm's after
-     * (no j).  Uncommon align tails sit after each arm's ret and j back.
+     * Hot body. Ripes RV32_5S: not-taken is free, taken/j costs a flush.
+     * Common cases fall through:
+     *   same sign, |ea-eb|>=8 (mb or ma becomes 0), sum < 0x100 → pack
+     *   opposite, already-norm diff → pack
+     * Narrow align, carry, and left-renorm are the taken tails.
      */
-    andi    t6, a0, 0x7F                                # mant_a (deferred)
-    andi    a5, a1, 0x7F                                # mant_b
+    andi    t6, a0, 0x7F
+    andi    a5, a1, 0x7F
     ori     t6, t6, 0x80
     ori     a5, a5, 0x80
     li      t3, 8
     bne     t4, a3, bf16_add_hot_opp
 
-    # -------- same sign --------
-    bltu    t5, a4, bf16_add_ss_exp
+    # -------- same sign, ea >= eb falls through --------
+    bltu    t5, a4, bf16_add_ss_eb_gt
     sub     t0, t5, a4
-    bgeu    t0, t3, bf16_add_ss_shift_b
-    srl     a5, a5, t0
-    # fall into ss_after
-
-bf16_add_ss_after:
+    bltu    t0, t3, bf16_add_ss_srl_b                   # dexp < 8 (uncommon)
+    li      a5, 0                                       # |dexp|>=8 → small mant 0
+bf16_add_ss_sum:
     add     t6, t6, a5                                  # sum in [0x80, 0x1fe]
     li      t0, 0x100
-    bltu    t6, t0, bf16_add_ss_pack_fin                # no exp++; exp still < 255
-    srli    t6, t6, 1
-    addi    t5, t5, 1
-    # overflow: exp may hit 255
-    li      t0, 255
-    bltu    t5, t0, bf16_add_ss_pack_fin
-    slli    a0, t4, 15
-    slli    t0, t0, 7                                   # 255 << 7 = 0x7F80
-    or      a0, a0, t0
-    ret
-
-bf16_add_ss_pack_fin:
+    bgeu    t6, t0, bf16_add_ss_bump                    # carry is the rare arm
+bf16_add_ss_pack:
     slli    a0, t4, 15
     slli    t0, t5, 7
     or      a0, a0, t0
@@ -597,64 +576,54 @@ bf16_add_ss_pack_fin:
     or      a0, a0, t0
     ret
 
-bf16_add_ss_exp:
+bf16_add_ss_bump:
+    srli    t6, t6, 1
+    addi    t5, t5, 1
+    li      t0, 255
+    beq     t5, t0, bf16_add_ss_inf
+    j       bf16_add_ss_pack
+
+bf16_add_ss_inf:
+    slli    a0, t4, 15
+    li      t0, 0xFF
+    slli    t0, t0, 7
+    or      a0, a0, t0
+    ret
+
+bf16_add_ss_srl_b:
+    srl     a5, a5, t0
+    j       bf16_add_ss_sum
+
+bf16_add_ss_eb_gt:
     sub     t0, a4, t5
     mv      t5, a4
-    bgeu    t0, t3, bf16_add_ss_shift_a
-    srl     t6, t6, t0
-    j       bf16_add_ss_after
-
-bf16_add_ss_shift_a:
+    bltu    t0, t3, bf16_add_ss_srl_a
     li      t6, 0
-    j       bf16_add_ss_after
+    j       bf16_add_ss_sum
 
-bf16_add_ss_shift_b:
-    li      a5, 0
-    j       bf16_add_ss_after
+bf16_add_ss_srl_a:
+    srl     t6, t6, t0
+    j       bf16_add_ss_sum
 
     # -------- opposite sign --------
-    /*
-     * Split on ea<eb early.  When ea<eb and dexp>=1, ma is right-shifted (or
-     * zeroed if dexp>=8) so mb>ma always — skip equal / ma>mb compares and
-     * set sign_b up front.  Path-gap: on_lt_mb was the only hot loser vs C.
-     */
+    /* ea<eb: ma shifted ⇒ mb>ma, sign=sign_b. Wide (|dexp|>=8) falls through. */
 bf16_add_hot_opp:
     bltu    t5, a4, bf16_add_opp_lt
     sub     t0, t5, a4
-    bgeu    t0, t3, bf16_add_opp_shift_b
-    srl     a5, a5, t0
-    # fall into opp_after (ea>=eb)
+    bltu    t0, t3, bf16_add_opp_srl_b
+    li      a5, 0
 
 bf16_add_opp_after:
-    bne     a5, t6, bf16_add_opp_mant0
-    li      a0, 0
-    ret
-
-bf16_add_opp_mant0:
+    beq     a5, t6, bf16_add_opp_ret0                   # equal mag → +0 (rare)
     bltu    t6, a5, bf16_add_opp_mant1
     sub     t6, t6, a5                                  # sign stays sign_a
-    # fall into renorm (ma>mb)
-
 bf16_add_opp_renorm:
     /*
-     * Opposite sub of two |0x80 mants: result in [1, 0xFF] — never >=0x100
-     * (no right shift) and exp only stays or shrinks (no Inf).  May need
-     * left renorm and exp<0 -> +0.
-     * Already-norm (mant>=0x80): exp unchanged >=1 -> pack_fin (skip bgez).
-     *
-     * Left renorm stays 1-bit loop: samp hot almost all k=0/1; binary 4/2/1
-     * and hybrid (force-1 + ladder) both raised add/sub sum — not kept.
+     * Diff of two |0x80 mants is in [1, 0xFF]. Already-norm (>=0x80) is the
+     * common arm and falls into pack. Left renorm stays 1-bit.
      */
     li      t0, 0x80
-    bgeu    t6, t0, bf16_add_opp_pack_fin
-bf16_add_opp_renorm_loop:
-    slli    t6, t6, 1
-    addi    t5, t5, -1
     bltu    t6, t0, bf16_add_opp_renorm_loop
-    bgez    t5, bf16_add_opp_pack_fin
-    li      a0, 0
-    ret
-
 bf16_add_opp_pack_fin:
     slli    a0, t4, 15
     slli    t0, t5, 7
@@ -663,29 +632,50 @@ bf16_add_opp_pack_fin:
     or      a0, a0, t0
     ret
 
+bf16_add_opp_ret0:
+    li      a0, 0
+    ret
+
+bf16_add_opp_renorm_loop:
+    slli    t6, t6, 1
+    addi    t5, t5, -1
+    bltu    t6, t0, bf16_add_opp_renorm_loop
+    bgez    t5, bf16_add_opp_pack_fin
+    li      a0, 0
+    ret
+
 bf16_add_opp_mant1:
-    mv      t4, a3                                      # sign = sign_b
+    mv      t4, a3
     sub     t6, a5, t6
     j       bf16_add_opp_renorm
 
+bf16_add_opp_srl_b:
+    srl     a5, a5, t0
+    j       bf16_add_opp_after
+
 bf16_add_opp_lt:
-    /* ea < eb: ma shifted/zeroed => mb > ma always; sign = sign_b */
     sub     t0, a4, t5
     mv      t5, a4
     mv      t4, a3
-    bgeu    t0, t3, bf16_add_opp_lt_wide
+    bltu    t0, t3, bf16_add_opp_lt_srl
+    mv      t6, a5                                      # dexp>=8: result = mb
+    j       bf16_add_opp_pack_fin
+
+bf16_add_opp_lt_srl:
     srl     t6, t6, t0
     sub     t6, a5, t6
     j       bf16_add_opp_renorm
 
-bf16_add_opp_lt_wide:
-    /* dexp>=8: ma=0, result=mb already norm, exp=eb */
-    mv      t6, a5
-    j       bf16_add_opp_pack_fin
+bf16_add_exp_a_zero:
+    slli    t0, a0, 17
+    beqz    t0, bf16_add_special_zero
+    beqz    a4, bf16_add_exp_b_zero
+    j       bf16_add_hot
 
-bf16_add_opp_shift_b:
-    li      a5, 0
-    j       bf16_add_opp_after
+bf16_add_exp_b_zero:
+    slli    t0, a1, 17
+    beqz    t0, bf16_add_special_zero
+    j       bf16_add_hot
 
     /*
      * bf16_add_special_ff — field short-circuit (not class-bit machine).

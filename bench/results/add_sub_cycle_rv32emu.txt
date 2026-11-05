@@ -1,0 +1,6 @@
+add/sub instret: same corpus as Ripes (144 edges + 8192 hot)
+add asm n=00002090 avg=0000002c max=00000036 fail=00000000 sink=12eab148
+add c   n=00002090 avg=0000002d max=0000003a fail=00000000 sink=12eab148
+sub asm n=00002090 avg=0000002e max=00000036 fail=00000000 sink=13233577
+sub c   n=00002090 avg=00000030 max=0000003d fail=00000000 sink=13233577
+DONE

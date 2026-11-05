@@ -1,0 +1,60 @@
+--- asm add ---
+
+Program exited with code: 72
+{
+    "# instructions retired": 702538,
+    "CPI": 1.110376947581483,
+    "IPC": 0.9005950656469448,
+    "cycles": 780082,
+    "runinfo": {
+        "ISA extensions": [
+        ],
+        "processor": "RV32_5S",
+        "source file": "add_sub_ripes_asm_add.elf"
+    }
+}
+--- c add ---
+
+Program exited with code: 72
+{
+    "# instructions retired": 713995,
+    "CPI": 1.1804578463434618,
+    "IPC": 0.8471289365372591,
+    "cycles": 842841,
+    "runinfo": {
+        "ISA extensions": [
+        ],
+        "processor": "RV32_5S",
+        "source file": "add_sub_ripes_c_add.elf"
+    }
+}
+--- asm sub ---
+
+Program exited with code: 119
+{
+    "# instructions retired": 719577,
+    "CPI": 1.1076910462674598,
+    "IPC": 0.9027788058499328,
+    "cycles": 797069,
+    "runinfo": {
+        "ISA extensions": [
+        ],
+        "processor": "RV32_5S",
+        "source file": "add_sub_ripes_asm_sub.elf"
+    }
+}
+--- c sub ---
+
+Program exited with code: 119
+{
+    "# instructions retired": 739014,
+    "CPI": 1.1970300968587875,
+    "IPC": 0.8354008830890483,
+    "cycles": 884622,
+    "runinfo": {
+        "ISA extensions": [
+        ],
+        "processor": "RV32_5S",
+        "source file": "add_sub_ripes_c_sub.elf"
+    }
+}

@@ -128,6 +128,44 @@ ripes-mul-loop: mul_loop_ripes_br.elf mul_loop_ripes_nbr.elf
 	  $(RIPES) $(RIPES_FLAGS) --timeout 600000 --src mul_loop_ripes_nbr.elf; } \
 	  | tee results/mul_loop_ripes.txt
 
+# --- add/sub: same corpus, instret (rv32emu) vs cycles (Ripes 5ST) ---
+add_sub_cycle_main.o: add_sub_cycle_main.c
+	$(CC) $(CFLAGS) -c $< -o $@
+add_sub_cycle.elf: start.o perfcounter.o bf16_asm.o bf16_c_o2.o add_sub_cycle_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_asm.o bf16_c_o2.o add_sub_cycle_main.o
+
+.PHONY: run-add-sub-cycle
+run-add-sub-cycle: add_sub_cycle.elf
+	mkdir -p results
+	$(RV32EMU) $< | tee results/add_sub_cycle_rv32emu.txt
+
+add_sub_ripes_asm_add_main.o: add_sub_ripes_main.c
+	$(CC) $(CFLAGS) -DBENCH_ASM -c $< -o $@
+add_sub_ripes_c_add_main.o: add_sub_ripes_main.c
+	$(CC) $(CFLAGS) -c $< -o $@
+add_sub_ripes_asm_sub_main.o: add_sub_ripes_main.c
+	$(CC) $(CFLAGS) -DBENCH_ASM -DOP_SUB -c $< -o $@
+add_sub_ripes_c_sub_main.o: add_sub_ripes_main.c
+	$(CC) $(CFLAGS) -DOP_SUB -c $< -o $@
+add_sub_ripes_asm_add.elf: start.o bf16_asm.o add_sub_ripes_asm_add_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o bf16_asm.o add_sub_ripes_asm_add_main.o
+add_sub_ripes_c_add.elf: start.o bf16_c_o2.o add_sub_ripes_c_add_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o bf16_c_o2.o add_sub_ripes_c_add_main.o
+add_sub_ripes_asm_sub.elf: start.o bf16_asm.o add_sub_ripes_asm_sub_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o bf16_asm.o add_sub_ripes_asm_sub_main.o
+add_sub_ripes_c_sub.elf: start.o bf16_c_o2.o add_sub_ripes_c_sub_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o bf16_c_o2.o add_sub_ripes_c_sub_main.o
+
+.PHONY: ripes-add-sub
+ripes-add-sub: add_sub_ripes_asm_add.elf add_sub_ripes_c_add.elf \
+		add_sub_ripes_asm_sub.elf add_sub_ripes_c_sub.elf
+	mkdir -p results
+	{ echo '--- asm add ---'; $(RIPES) $(RIPES_FLAGS) --timeout 600000 --src add_sub_ripes_asm_add.elf; \
+	  echo '--- c add ---';   $(RIPES) $(RIPES_FLAGS) --timeout 600000 --src add_sub_ripes_c_add.elf; \
+	  echo '--- asm sub ---'; $(RIPES) $(RIPES_FLAGS) --timeout 600000 --src add_sub_ripes_asm_sub.elf; \
+	  echo '--- c sub ---';   $(RIPES) $(RIPES_FLAGS) --timeout 600000 --src add_sub_ripes_c_sub.elf; } \
+	  | tee results/add_sub_ripes.txt
+
 # --- full-domain classed instret (hot/nan/inf/zero/sub) ---
 stats_class_c_main.o: stats_class_main.c
 	$(CC) $(CFLAGS) -c $< -o $@

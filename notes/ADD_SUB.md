@@ -17,6 +17,7 @@ Other leaves (mul/div/…) are out of scope here except as KPI context.
 - Latest hot-path audit: [`ADD_HOT_PATH_AUDIT.md`](ADD_HOT_PATH_AUDIT.md)
 - Full-domain path tables: [`leaves/bf16_add.md`](leaves/bf16_add.md), [`leaves/bf16_sub.md`](leaves/bf16_sub.md)
 - Join dump: [`path_class_join.md`](../bench/results/path_class_join.md)
+- 5-stage cycle chapter logs: [`../bench/ADD_SUB_CYCLES.md`](../bench/ADD_SUB_CYCLES.md)
 
 ---
 
@@ -25,7 +26,7 @@ Other leaves (mul/div/…) are out of scope here except as KPI context.
 While iterating on add/sub, **do not** re-sweep mul/div/helpers.
 
 ```bash
-cd 02-bf16/bench && source env.sh
+cd bench && source env.sh
 
 # Per-opt gate (~seconds): only add+sub, ~65k hot pairs each
 make stats-samp-asm OPS=add,sub
@@ -76,6 +77,8 @@ Cross `make test`: ALL OK; samp sinks unchanged across bit-exact opts.
 
 Matches samp direction. Cold (nan/inf/zero/sub) still slightly behind C; volume is tiny vs hot.
 
+Instret is not the 5-stage story. That measurement and the layout change that followed are [chapter 9](#9-five-stage-cycles-ripes-rv32_5s).
+
 ---
 
 ## 3. Optimization timeline (samp)
@@ -113,20 +116,24 @@ Why multi-bit failed: samp hot almost always needs `k=0` or `k=1` left shifts; b
 
 ## 4. Control-flow map (current ASM)
 
+Hot normals fall through. Taken branches are the uncommon exits (Ripes charges those).
+
 ```text
 bf16_add
   unpack sign/exp (mant deferred)
-  gate FF → special_ff
-  zero gate (exp-first) → special_zero | hot
+  beq exp==0xFF → special_ff          # not taken on hot
+  beqz exp==0   → zero / subnorm tail # not taken on hot
   hot: mant|0x80, li 8
-       bne signs → opp | fall same
+       bne signs → opp                 # same-sign falls through
   same-sign:
-       ea≥eb fallthrough align → add → bump? → pack (no left renorm)
-       ea<eb → swap arm → j after
+       bltu ea<eb → swap arm
+       bltu |dexp|<8 → srl             # wide (|dexp|≥8) falls through, small mant = 0
+       bgeu sum≥0x100 → carry/Inf      # no-carry falls into pack
   opposite:
-       ea≥eb fallthrough align → equal? → ma>mb fall renorm | mb>ma j renorm
-       ea<eb → opp_lt: sign_b, mb−ma always; wide → pack; else j renorm
-  renorm: already-norm → pack; else 1-bit left loop; exp<0 → +0
+       same wide-vs-narrow split
+       beq mags equal → +0
+       bltu diff<0x80 → 1-bit left renorm
+       already-norm falls into pack
 ```
 
 `bf16_sub`: `li t0,0x8000; xor a1,a1,t0` → fall into `bf16_add`.
@@ -185,7 +192,78 @@ Detail tables: [`leaves/bf16_add.md`](leaves/bf16_add.md), [`leaves/bf16_sub.md`
 | :--- | :--- |
 | Beat C on samp add/sub | **Done** (44/46 vs 45/48) |
 | Beat C on full hot | **Done** (same) |
+| Beat C on Ripes 5ST cycles | **Done** (chapter 9: add −7.5, sub −10.5 /call) |
 | Cold specials ≤ C | Open (low ROI vs mul/div) |
-| Further hot scraping | Mostly mined; only pursue with path contrib evidence |
+| Further hot scraping | Instret mostly mined; cycle layout is the chapter 9 cut |
 
-Further BF16 ROI shifts to **mul (+14)** / **div (+8)** unless a new measured add/sub loss appears.
+Further BF16 instret ROI shifts to **mul (+14)** / **div (+8)** unless a new measured add/sub loss appears.
+
+---
+
+## 9. Five-stage cycles (Ripes RV32_5S)
+
+rv32emu reports `cycle ≡ instret` (CPI = 1). That KPI said add/sub already beat GCC `-O2` by 1–2 instructions. On a 5-stage pipeline with forwarding the same binaries did not: **add was slower in cycles**.
+
+Logs and commands: [`../bench/ADD_SUB_CYCLES.md`](../bench/ADD_SUB_CYCLES.md).
+
+### 9.1 What Ripes charges
+
+Processor: `RV32_5S` (5-stage, forwarding, hazard detection).  
+Not-taken branches fall through at 1 cycle per instruction. A **taken** branch or unconditional `j` flushes the two younger stages, about **+2 cycles**.
+
+So a hot path that is one instruction shorter can still lose if it takes more branches than GCC.
+
+### 9.2 Corpus
+
+Same shape as the mul Ripes sample: **12×12 edges + 8192 normal×normal** (`n = 8336`).  
+Harness is identical on the ASM and C ELFs, so
+
+`per-call Δ ≈ (ASM total − C total) / 8336`.
+
+Bit-exact against `bf16_*_ref` (`fail = 0`, same process exit code).
+
+```bash
+cd bench && source env.sh
+make run-add-sub-cycle    # rv32emu instret on that corpus
+make ripes-add-sub        # Ripes cycles
+```
+
+### 9.3 Before the layout change
+
+Instret on this corpus matched the hot samp: add **44 vs 45**, sub **46 vs 48**.
+
+| op | instructions ASM−C | cycles ASM−C | CPI ASM | CPI C |
+| :--- | ---: | ---: | ---: | ---: |
+| add | −1.01 /call | **+1.23 /call** | 1.209 | 1.180 |
+| sub | −1.96 /call | −1.70 /call | 1.205 | 1.197 |
+
+Add retired fewer instructions and still spent more cycles. Two taken branches on every normal explain it:
+
+1. `bnez exp_a` / `bnez exp_b` jumped **into** the hot body. On a normal both are taken.
+2. The common arms were also taken: `|dexp| ≥ 8` (most uniform exponent pairs) went through `bgeu` + `j`, and a no-carry sum took `bltu` to pack.
+
+### 9.4 What changed in `bf16.S`
+
+Semantics unchanged. Only which arm falls through:
+
+| Check | Now falls through | Taken only when |
+| :--- | :--- | :--- |
+| exp | hot | `exp == 0` or `exp == 0xFF` |
+| align | `\|dexp\| ≥ 8` (small mant = 0) | `\|dexp\| < 8` (actual `srl`) |
+| same-sign sum | pack | carry (`sum ≥ 0x100`) or Inf |
+| opposite diff | pack | `diff < 0x80` (left renorm) or equal mag |
+
+`bf16_sub` is still `xor` the sign and fall into `bf16_add`, so it picks up the same layout plus the trampoline.
+
+### 9.5 After
+
+| op | ASM cycles | C cycles | ASM−C | CPI ASM | CPI C |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| add | **780 082** | 842 841 | **−7.5 /call** | 1.110 | 1.180 |
+| sub | **797 069** | 884 622 | **−10.5 /call** | 1.108 | 1.197 |
+
+Against the previous ASM that is about **−8.8 cycles/call** on both ops. Whole-program retired instructions moved only about **−0.4/call**; the per-call instret averages stayed **44 / 46**. The cycle win is CPI, not a shorter trace.
+
+### 9.6 Takeaway
+
+Under CPI = 1, “delete an instruction” and “delete a taken branch” look the same. On RV32_5S they do not. The branch to keep on the hot path is the one that is **not taken**.
