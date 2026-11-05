@@ -40,7 +40,7 @@ C GCC `-O2` hot reference (**samp**, same seed): **add 45 / sub 48 / mul 102 / d
 | `24755e0` | same-sign skip left renorm (GCC-O2) | 52 | 54 | 118 | 104 | +7 | ≈ −2.0 /call |
 | `7b74626` | early same/opp split + align srl fall-through | 52 | 53 | 118 | 104 | +7 | add ≈ −0.07 /call |
 | `cca98e2` | defer mant `andi` to hot / FF | 52 | 53 | 118 | 104 | +7 | hot flat (cold-only) |
-| `TBD` | same-sign skip Inf check if no exp++ | 51 | 53 | 118 | 104 | +6 | ≈ −0.98 /call |
+| `b5ae676` | same-sign skip Inf check if no exp++ | 51 | 53 | 118 | 104 | +6 | ≈ −0.98 /call |
 
 Tried align fall-through **with** moving sign tails (earlier): samp **regressed** ~+0.44 — not kept. This row keeps sign specialized per arm.
 
