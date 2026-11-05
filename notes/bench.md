@@ -46,7 +46,7 @@ C GCC `-O2` hot reference (**samp**, same seed): **add 45 / sub 48 / mul 102 / d
 | `31b54da` | opp renorm: drop ≥0x100 / Inf (diff∈[1,FF]) | **46** | **48** | 116 | 104 | **+1** | ≈ −2.5 /call |
 | `b168a70` | opp already-norm skip bgez | **46** | **48** | 116 | 104 | **+1** | ≈ −0.49 /call |
 | `3d32f24` | opp mant0 fall into renorm | **46** | **48** | 116 | 104 | **+1** | ≈ −0.001 /call |
-| *(next)* | opp `ea<eb`: always `mb>ma`, skip cmp | **44** | **46** | 116 | 104 | **−1** | ≈ −1.45 /call |
+| `c9df043` | opp `ea<eb`: always `mb>ma`, skip cmp | **44** | **46** | 116 | 104 | **−1** | ≈ −1.45 /call |
 
 Tried align fall-through **with** moving sign tails (earlier): samp **regressed** ~+0.44 — not kept. This row keeps sign specialized per arm.
 
