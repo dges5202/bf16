@@ -1,0 +1,36 @@
+riscv64-unknown-elf-gcc -march=rv32i_zicsr -mabi=ilp32 -nostdlib -ffreestanding -fno-builtin -O2 -Wall -Wextra -c div_loop_ripes_main.c -o div_loop_ripes_br_main.o
+riscv64-unknown-elf-ld -m elf32lriscv -T linker.ld --no-warn-rwx-segments -o div_loop_ripes_br.elf start.o div_loop_variants.o div_loop_ripes_br_main.o
+riscv64-unknown-elf-gcc -march=rv32i_zicsr -mabi=ilp32 -nostdlib -ffreestanding -fno-builtin -O2 -Wall -Wextra -DUSE_NBR -c div_loop_ripes_main.c -o div_loop_ripes_nbr_main.o
+riscv64-unknown-elf-ld -m elf32lriscv -T linker.ld --no-warn-rwx-segments -o div_loop_ripes_nbr.elf start.o div_loop_variants.o div_loop_ripes_nbr_main.o
+/home/dges5202/Computer_architecture/tools/ripes-continuous/usr/bin/Ripes --mode cli -t elf --proc RV32_5S --timeout 120000 --cycles --iret --cpi --ipc --runinfo --json --timeout 600000 --src div_loop_ripes_br.elf
+qt.qpa.plugin: Could not find the Qt platform plugin "wayland" in ""
+
+Program exited with code: 231
+{
+    "# instructions retired": 2086299,
+    "CPI": 1.272759561309285,
+    "IPC": 0.785694352962709,
+    "cycles": 2655357,
+    "runinfo": {
+        "ISA extensions": [
+        ],
+        "processor": "RV32_5S",
+        "source file": "div_loop_ripes_br.elf"
+    }
+}
+/home/dges5202/Computer_architecture/tools/ripes-continuous/usr/bin/Ripes --mode cli -t elf --proc RV32_5S --timeout 120000 --cycles --iret --cpi --ipc --runinfo --json --timeout 600000 --src div_loop_ripes_nbr.elf
+qt.qpa.plugin: Could not find the Qt platform plugin "wayland" in ""
+
+Program exited with code: 231
+{
+    "# instructions retired": 2686385,
+    "CPI": 1.1373965384708447,
+    "IPC": 0.8792008470013762,
+    "cycles": 3055485,
+    "runinfo": {
+        "ISA extensions": [
+        ],
+        "processor": "RV32_5S",
+        "source file": "div_loop_ripes_nbr.elf"
+    }
+}

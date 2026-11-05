@@ -1,0 +1,10 @@
+div loop: branched vs branchless
+br  check n=00009cd0 fail=00000000
+nbr check n=00009cd0 fail=00000000
+--- instret all ---
+br  n=00009cd0 avg=000000d0 max=000000e1 wa=00008002 wb=00008b3b sink=4da8690c
+nbr n=00009cd0 avg=00000117 max=0000012f wa=00008002 wb=00008b3b sink=4da8690c
+--- instret hot-only ---
+br  n=00009b21 avg=000000d2 max=000000e1 wa=00008002 wb=00008b3b sink=4cd1554c
+nbr n=00009b21 avg=0000011a max=0000012f wa=00008002 wb=00008b3b sink=4cd1554c
+DONE

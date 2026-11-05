@@ -1,0 +1,5 @@
+variant proc cycles iret cpi
+class RV32_SS 37650 37650 1.0
+class RV32_5S 49402 37650 1.3121
+tree RV32_SS 35377 35377 1.0
+tree RV32_5S 47129 35377 1.3322

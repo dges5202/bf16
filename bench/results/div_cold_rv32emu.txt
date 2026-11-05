@@ -1,0 +1,10 @@
+div cold variants: class vs tree
+class check n=00000290 fail=00000000
+tree check n=00000290 fail=00000000
+--- instret specials-heavy ---
+class n=00000090 avg=00000052 max=000000da wa=00000001 wb=00003f80 sink=004598bd
+tree n=00000090 avg=00000043 max=000000da wa=00000001 wb=00003f80 sink=004598bd
+--- instret mixed ---
+class n=00000290 avg=000000b4 max=000000db wa=00003233 wb=0000000f sink=014a7990
+tree n=00000290 avg=000000b0 max=000000db wa=00003233 wb=0000000f sink=014a7990
+DONE
