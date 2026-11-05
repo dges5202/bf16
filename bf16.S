@@ -576,17 +576,14 @@ bf16_add_hot:
 bf16_add_ss_after:
     add     t6, t6, a5                                  # sum in [0x80, 0x1fe]
     li      t0, 0x100
-    bltu    t6, t0, bf16_add_ss_pack
+    bltu    t6, t0, bf16_add_ss_pack_fin                # no exp++; exp still < 255
     srli    t6, t6, 1
     addi    t5, t5, 1
-    # fall into ss_pack (exp only grew or stayed; never < 0 on same-sign hot)
-
-bf16_add_ss_pack:
+    # overflow: exp may hit 255
     li      t0, 255
     bltu    t5, t0, bf16_add_ss_pack_fin
     slli    a0, t4, 15
-    li      t0, 0xFF
-    slli    t0, t0, 7
+    slli    t0, t0, 7                                   # 255 << 7 = 0x7F80
     or      a0, a0, t0
     ret
 
