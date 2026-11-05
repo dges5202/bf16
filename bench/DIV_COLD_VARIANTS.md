@@ -1,6 +1,6 @@
 # Experiment: `bf16_div` cold path — class encode vs branch tree
 
-> Folded into the canonical div report: [`../notes/experiments/DIV.md`](../notes/experiments/DIV.md).
+> Folded into the canonical div report: [`../notes/DIV.md`](../notes/DIV.md).
 
 Files: [`div_cold_variants.S`](div_cold_variants.S) (`bf16_div_class` / `bf16_div_tree`), same gate+hot, different specials.
 

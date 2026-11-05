@@ -42,7 +42,7 @@ Samp still **burns** LCG draws for skipped ops (no leaf call), so add/sub pairs 
 | **path** | FULL domain + fine paths | `make path-class OPS=…` | **path reports / milestones** |
 
 Per-leaf path dumps: [`notes/leaves/`](leaves/).  
-**Canonical experiment reports (add/sub · mul · div · sqrt):** [`experiments/`](experiments/).
+**Canonical experiment reports (add/sub · mul · div · sqrt):** [`EXPERIMENTS.md`](EXPERIMENTS.md).
 
 Tool: `rv32emu` + `instret` CSR. **`cycle` ≡ `instret` (CPI=1).**  
 KPI: **hot** avg (both finite normal). Hex in raw logs; decimal in tables.  
@@ -90,4 +90,4 @@ Append a samp row for every later hot-path commit. Tooling-only commits stay out
 
 Full dumps: [`PERF_TRUNCATE.md`](../PERF_TRUNCATE.md), `bench/results/stats_class_*.txt`.  
 Samp dumps: `bench/results/stats_samp_*.txt` (filtered: `*_add_sub.txt`, …).  
-Experiment reports: [`experiments/README.md`](experiments/README.md) (ADD_SUB / MUL / DIV / SQRT).
+Experiment reports: [`EXPERIMENTS.md`](EXPERIMENTS.md) (ADD_SUB / MUL / DIV / SQRT).

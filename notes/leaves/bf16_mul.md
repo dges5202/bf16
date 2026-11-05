@@ -1,6 +1,6 @@
 # `bf16_mul` — path-class report
 
-Canonical narrative: [`../experiments/MUL.md`](../experiments/MUL.md).
+Canonical narrative: [`../MUL.md`](../MUL.md).
 
 ## Reproduce
 

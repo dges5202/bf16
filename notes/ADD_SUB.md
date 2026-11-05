@@ -1,5 +1,3 @@
-<!-- Canonical copy: notes/experiments/ADD_SUB.md -->
-
 # bf16_add / bf16_sub — experiment report
 
 Canonical experiment report for truncate BF16 **add/sub** hand-ASM campaign vs GCC `-O2` on `rv32emu` (`cycle ≡ instret`).  
@@ -8,17 +6,17 @@ Other leaves (mul/div/…) are out of scope here except as KPI context.
 | Item | Value |
 | :--- | :--- |
 | ISA | `rv32i_zicsr` / `ilp32` freestanding |
-| Guest | [`bf16.S`](../../bf16.S) `bf16_add` / `bf16_sub` |
-| C ref | GCC `-O2` [`bench/bf16_c_o2.c`](../../bench/bf16_c_o2.c) |
-| Policy | Truncate (no RNE); FTZ on exp&lt;0; same bit contract as [`bf16.c`](../../bf16.c) |
+| Guest | [`bf16.S`](../bf16.S) `bf16_add` / `bf16_sub` |
+| C ref | GCC `-O2` [`bench/bf16_c_o2.c`](../bench/bf16_c_o2.c) |
+| Policy | Truncate (no RNE); FTZ on exp&lt;0; same bit contract as [`bf16.c`](../bf16.c) |
 | KPI | Hot avg instret (both finite normal), wrap included |
 
 **Related files**
 
-- Commit samp log: [`bench.md`](../bench.md)
-- Latest hot-path audit: [`ADD_HOT_PATH_AUDIT.md`](../ADD_HOT_PATH_AUDIT.md)
-- Full-domain path tables: [`leaves/bf16_add.md`](../leaves/bf16_add.md), [`leaves/bf16_sub.md`](../leaves/bf16_sub.md)
-- Join dump: [`path_class_join.md`](../../bench/results/path_class_join.md)
+- Commit samp log: [`bench.md`](bench.md)
+- Latest hot-path audit: [`ADD_HOT_PATH_AUDIT.md`](ADD_HOT_PATH_AUDIT.md)
+- Full-domain path tables: [`leaves/bf16_add.md`](leaves/bf16_add.md), [`leaves/bf16_sub.md`](leaves/bf16_sub.md)
+- Join dump: [`path_class_join.md`](../bench/results/path_class_join.md)
 
 ---
 
@@ -98,7 +96,7 @@ End: add **44** / sub **46** (**below** C).
 | `3d32f24` | opp `mant0` fall into renorm | 46 | 48 | +1 | ≈ flat |
 | `c9df043` | opp `ea<eb`: always `mb>ma` | **44** | **46** | **−1** | ≈ −1.45 /call |
 
-Mul door (`8bacc39`) paused add; listed in [`bench.md`](../bench.md) only.
+Mul door (`8bacc39`) paused add; listed in [`bench.md`](bench.md) only.
 
 ### Rejected (measured, not kept)
 
@@ -168,7 +166,7 @@ From path-class scan (contrib = `(ASM_avg − C_avg) × n`):
 
 Hot paths ahead or tied; overall hot **46 vs 48**. Cold slightly behind like add.
 
-Detail tables: [`leaves/bf16_add.md`](../leaves/bf16_add.md), [`leaves/bf16_sub.md`](../leaves/bf16_sub.md).
+Detail tables: [`leaves/bf16_add.md`](leaves/bf16_add.md), [`leaves/bf16_sub.md`](leaves/bf16_sub.md).
 
 ---
 

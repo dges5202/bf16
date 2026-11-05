@@ -1,6 +1,6 @@
 # `bf16_add` — path-class report
 
-Canonical narrative (timeline + diagnosis): [`../experiments/ADD_SUB.md`](../experiments/ADD_SUB.md).
+Canonical narrative (timeline + diagnosis): [`../ADD_SUB.md`](../ADD_SUB.md).
 
 ## Reproduce
 

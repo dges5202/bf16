@@ -1,12 +1,12 @@
 # bf16_div — experiment report
 
 Canonical write-up for truncate BF16 **div** hand-ASM vs GCC `-O2` on `rv32emu` (`cycle ≡ instret`).  
-Folds [`DIV_LOOP_VARIANTS.md`](../../bench/DIV_LOOP_VARIANTS.md), [`DIV_COLD_VARIANTS.md`](../../bench/DIV_COLD_VARIANTS.md), [`leaves/bf16_div.md`](../leaves/bf16_div.md), and path_class join data.
+Folds [`DIV_LOOP_VARIANTS.md`](../bench/DIV_LOOP_VARIANTS.md), [`DIV_COLD_VARIANTS.md`](../bench/DIV_COLD_VARIANTS.md), [`leaves/bf16_div.md`](leaves/bf16_div.md), and path_class join data.
 
 | Item | Value |
 | :--- | :--- |
-| Guest | [`bf16.S`](../../bf16.S) `bf16_div` |
-| C ref | GCC `-O2` [`bench/bf16_c_o2.c`](../../bench/bf16_c_o2.c) |
+| Guest | [`bf16.S`](../bf16.S) `bf16_div` |
+| C ref | GCC `-O2` [`bench/bf16_c_o2.c`](../bench/bf16_c_o2.c) |
 | Policy | DAZ on subnormals; 8-iter aligned soft-div; truncate renorm/pack |
 | KPI | Hot avg instret (both finite normal) |
 
@@ -55,7 +55,7 @@ Cold zero/sub are expensive on ASM (DAZ + specials tree) but rare vs hot.
 
 ### Soft-div loop: branched vs branchless
 
-Source: [`bench/DIV_LOOP_VARIANTS.md`](../../bench/DIV_LOOP_VARIANTS.md) (`bf16_div_br` / `bf16_div_nbr`).
+Source: [`bench/DIV_LOOP_VARIANTS.md`](../bench/DIV_LOOP_VARIANTS.md) (`bf16_div_br` / `bf16_div_nbr`).
 
 Same gate/specials/renorm; only the compare/subtract step differs.
 
@@ -69,7 +69,7 @@ Ripes RV32_5S: branchless better CPI but **more total cycles** (~+15%).
 
 ### Cold specials: class-bit encode vs mag branch tree
 
-Source: [`bench/DIV_COLD_VARIANTS.md`](../../bench/DIV_COLD_VARIANTS.md).
+Source: [`bench/DIV_COLD_VARIANTS.md`](../bench/DIV_COLD_VARIANTS.md).
 
 | Corpus | class avg | tree avg |
 | :--- | ---: | ---: |
@@ -112,7 +112,7 @@ All measured hot/cold paths behind C; largest contrib on common epilogues:
 | `div_over` | ~5.20e8 | 104 | 95 | +9 | |
 | `cold_*` | smaller | … | … | +10…+18 | DAZ/specials |
 
-Full tables: [`leaves/bf16_div.md`](../leaves/bf16_div.md).
+Full tables: [`leaves/bf16_div.md`](leaves/bf16_div.md).
 
 ---
 

@@ -24,12 +24,13 @@ make path-class-join OPS=add,sub
 
 | Kind | Location |
 | :--- | :--- |
-| Samp commit log | [`../bench.md`](../bench.md) |
-| Path-class per leaf | [`../leaves/`](../leaves/) |
-| Path join dump | [`../../bench/results/path_class_join.md`](../../bench/results/path_class_join.md) |
-| Older add audit | [`../ADD_HOT_PATH_AUDIT.md`](../ADD_HOT_PATH_AUDIT.md) → summary in ADD_SUB |
-| Older mul audit | [`../MUL_HOT_PATH_AUDIT.md`](../MUL_HOT_PATH_AUDIT.md) → summary in MUL |
-| Div loop / cold A/B | [`../../bench/DIV_LOOP_VARIANTS.md`](../../bench/DIV_LOOP_VARIANTS.md), [`../../bench/DIV_COLD_VARIANTS.md`](../../bench/DIV_COLD_VARIANTS.md) → DIV |
-| Coarse full class | [`../../PERF_TRUNCATE.md`](../../PERF_TRUNCATE.md) |
+| Samp commit log | [`bench.md`](bench.md) |
+| Path-class per leaf | [`leaves/`](leaves/) |
+| Path join dump | [`../bench/results/path_class_join.md`](../bench/results/path_class_join.md) |
+| Older add audit | [`ADD_HOT_PATH_AUDIT.md`](ADD_HOT_PATH_AUDIT.md) → summary in ADD_SUB |
+| Older mul audit | [`MUL_HOT_PATH_AUDIT.md`](MUL_HOT_PATH_AUDIT.md) → summary in MUL |
+| Div loop / cold A/B | [`../bench/DIV_LOOP_VARIANTS.md`](../bench/DIV_LOOP_VARIANTS.md), [`../bench/DIV_COLD_VARIANTS.md`](../bench/DIV_COLD_VARIANTS.md) → DIV |
+| Coarse full class | [`../PERF_TRUNCATE.md`](../PERF_TRUNCATE.md) |
+
 
 Raw numbers in these reports are **measured** (samp or path_class). Narrative only cites those rows.

@@ -1,6 +1,6 @@
 # `bf16_div` — path-class report
 
-Canonical narrative (incl. loop/cold A/B): [`../experiments/DIV.md`](../experiments/DIV.md).
+Canonical narrative (incl. loop/cold A/B): [`../DIV.md`](../DIV.md).
 
 ## Reproduce
 

@@ -11,7 +11,7 @@ make path-class OPS=add,sub
 make path-class-join OPS=add,sub
 ```
 
-Canonical experiment reports (merged narrative + paths): [`../experiments/`](../experiments/).
+Canonical experiment reports (merged narrative + paths): [`../`](../).
 
 
 ## Leaves

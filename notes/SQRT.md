@@ -1,12 +1,12 @@
 # bf16_sqrt — experiment report
 
 Canonical write-up for truncate BF16 **sqrt** hand-ASM vs GCC `-O2` on `rv32emu` (`cycle ≡ instret`).  
-Folds [`leaves/bf16_sqrt.md`](../leaves/bf16_sqrt.md), [`PERF_TRUNCATE.md`](../../PERF_TRUNCATE.md) unary tables, and path_class join data.
+Folds [`leaves/bf16_sqrt.md`](leaves/bf16_sqrt.md), [`PERF_TRUNCATE.md`](../PERF_TRUNCATE.md) unary tables, and path_class join data.
 
 | Item | Value |
 | :--- | :--- |
-| Guest | [`bf16.S`](../../bf16.S) `bf16_sqrt` |
-| C ref | GCC `-O2` [`bench/bf16_c_o2.c`](../../bench/bf16_c_o2.c) |
+| Guest | [`bf16.S`](../bf16.S) `bf16_sqrt` |
+| C ref | GCC `-O2` [`bench/bf16_c_o2.c`](../bench/bf16_c_o2.c) |
 | Policy | Bisect mid∈[90,256]; `sq=(mid*mid)/128`; truncate pack `high&0x7F` |
 | KPI | Hot / all avg instret (unary full 65536) |
 
@@ -92,7 +92,7 @@ Dominating cost: **~8 bisect probes × soft mul** → hot avgs ~520–530 on eve
 
 Hot even/odd already beat C. The only path behind is **negative finite → NaN** (+1/call); volume is large in count of encodings but cheap absolute contrib vs bisect.
 
-Full tables: [`leaves/bf16_sqrt.md`](../leaves/bf16_sqrt.md).
+Full tables: [`leaves/bf16_sqrt.md`](leaves/bf16_sqrt.md).
 
 ---
 

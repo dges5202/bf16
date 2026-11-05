@@ -1,14 +1,14 @@
 # bf16_mul — experiment report
 
 Canonical write-up for truncate BF16 **mul** hand-ASM vs GCC `-O2` on `rv32emu` (`cycle ≡ instret`).  
-Folds [`MUL_HOT_PATH_AUDIT.md`](../MUL_HOT_PATH_AUDIT.md), [`leaves/bf16_mul.md`](../leaves/bf16_mul.md), samp rows in [`bench.md`](../bench.md), and path_class join data.
+Folds [`MUL_HOT_PATH_AUDIT.md`](MUL_HOT_PATH_AUDIT.md), [`leaves/bf16_mul.md`](leaves/bf16_mul.md), samp rows in [`bench.md`](bench.md), and path_class join data.
 
 | Item | Value |
 | :--- | :--- |
-| Guest | [`bf16.S`](../../bf16.S) `bf16_mul` |
-| C ref | GCC `-O2` [`bench/bf16_c_o2.c`](../../bench/bf16_c_o2.c) |
+| Guest | [`bf16.S`](../bf16.S) `bf16_mul` |
+| C ref | GCC `-O2` [`bench/bf16_c_o2.c`](../bench/bf16_c_o2.c) |
 | Policy | Truncate product; specials before mul; hidden 1 iff exp≠0 |
-| Disasm ref | [`gcc_o2_bf16_mul_ref.dis`](../gcc_o2_bf16_mul_ref.dis) |
+| Disasm ref | [`gcc_o2_bf16_mul_ref.dis`](gcc_o2_bf16_mul_ref.dis) |
 | KPI | Hot avg instret (both finite normal) |
 
 ---
@@ -96,7 +96,7 @@ bf16_mul
 
 Implication: the +14 is **not** a rare-path artifact — it sits on the common soft-mul + shift/pack epilogue.
 
-Full tables: [`leaves/bf16_mul.md`](../leaves/bf16_mul.md).
+Full tables: [`leaves/bf16_mul.md`](leaves/bf16_mul.md).
 
 ---
 
