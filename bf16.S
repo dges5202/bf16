@@ -552,107 +552,144 @@ bf16_add:
 
 bf16_add_hot:
     /*
-     * Hot body: |0x80; align by |dexp| (>=8 -> 0); add/sub; renorm; pack.
+     * Hot body: |0x80; align; add or sub; renorm; pack.
      *
-     * Same-sign (GCC -O2 insight): two hidden-1 mants sum to >= 0x80 always,
-     * so skip the left-shift loop — only >=0x100 needs one right shift+exp++,
-     * else pack.  Opposite-sign still uses full renorm (can be < 0x80).
+     * Early same/opposite split (GCC -O2 style): after |0x80, bne signs so
+     * each arm has its own align+epilogue — same-sign skips left renorm and
+     * exp<0 check; opposite keeps full renorm.
+     *
+     * Align: common (max=exp_a, dexp<8) srl falls into that arm's after
+     * (no j).  Uncommon align tails sit after each arm's ret and j back.
      */
     ori     t6, t6, 0x80
     ori     a5, a5, 0x80
     li      t3, 8
+    bne     t4, a3, bf16_add_hot_opp
 
-    bltu    t5, a4, bf16_add_exp                        # exp_a < exp_b?
-    # exp_a >= exp_b: result exp stays t5; shift / clear mant_b (a5)
-    sub     t0, t5, a4                                  # dexp
-    bgeu    t0, t3, bf16_add_exp_shift_b                # dexp >= 8 -> 0
+    # -------- same sign --------
+    bltu    t5, a4, bf16_add_ss_exp
+    sub     t0, t5, a4
+    bgeu    t0, t3, bf16_add_ss_shift_b
     srl     a5, a5, t0
-    j       bf16_add_exp_after
+    # fall into ss_after
 
-bf16_add_exp_shift_b:
-    li      a5, 0
-    j       bf16_add_exp_after
-
-bf16_add_exp:
-    # exp_b > exp_a: result exp = exp_b; shift / clear mant_a (t6)
-    sub     t0, a4, t5
-    mv      t5, a4                                      # exp = exp_b
-    bgeu    t0, t3, bf16_add_exp_shift_a
-    srl     t6, t6, t0
-    j       bf16_add_exp_after
-
-bf16_add_exp_shift_a:
-    li      t6, 0
-    # falls into after
-
-bf16_add_exp_after:
-    bne     t4, a3, bf16_add_sign_diff
-    # same sign: t4 stays sign_a; sum in [0x80, 0x1fe]
-    add     t6, t6, a5
+bf16_add_ss_after:
+    add     t6, t6, a5                                  # sum in [0x80, 0x1fe]
     li      t0, 0x100
-    bltu    t6, t0, bf16_add_renorm_norm                # already normalized
+    bltu    t6, t0, bf16_add_ss_pack
     srli    t6, t6, 1
     addi    t5, t5, 1
-    j       bf16_add_renorm_norm
+    # fall into ss_pack (exp only grew or stayed; never < 0 on same-sign hot)
 
-bf16_add_sign_diff:
-    bne     a5, t6, bf16_add_mant0
-    # mant_a == mant_b
-    li      a0, 0
-    ret
-
-bf16_add_mant0:
-    bltu    t6, a5, bf16_add_mant1
-    # mant_a > mant_b; t4 stays sign_a
-    sub     t6, t6, a5
-    j       bf16_add_mant_after
-bf16_add_mant1:
-    # mant_a < mant_b
-    mv      t4, a3                                      # sign = sign_b
-    sub     t6, a5, t6
-    # fall into mant_after
-
-bf16_add_mant_after:
-    # opposite-sign renorm (result may be < 0x80 or 0)
-    bnez    t6, bf16_add_renorm_ue0
-    li      a0, 0
-    ret
-
-bf16_add_renorm_ue0:
-    li      t0, 0x100
-    bltu    t6, t0, bf16_add_renorm_less
-    srli    t6, t6, 1
-    addi    t5, t5, 1
-
-bf16_add_renorm_less:
-    li      t0, 0x80
-    bgeu    t6, t0, bf16_add_renorm_norm
-bf16_add_renorm_less_loop:
-    slli    t6, t6, 1
-    addi    t5, t5, -1
-    bltu    t6, t0, bf16_add_renorm_less_loop
-
-bf16_add_renorm_norm:
-    bgez    t5, bf16_add_renorm_exp
-    li      a0, 0
-    ret
-
-bf16_add_renorm_exp:
+bf16_add_ss_pack:
     li      t0, 255
-    bltu    t5, t0, bf16_add_renorm_exp_after
+    bltu    t5, t0, bf16_add_ss_pack_fin
     slli    a0, t4, 15
     li      t0, 0xFF
     slli    t0, t0, 7
     or      a0, a0, t0
     ret
 
-bf16_add_renorm_exp_after:
+bf16_add_ss_pack_fin:
     slli    a0, t4, 15
     slli    t0, t5, 7
     or      a0, a0, t0
     andi    t0, t6, 0x7F
     or      a0, a0, t0
     ret
+
+bf16_add_ss_exp:
+    sub     t0, a4, t5
+    mv      t5, a4
+    bgeu    t0, t3, bf16_add_ss_shift_a
+    srl     t6, t6, t0
+    j       bf16_add_ss_after
+
+bf16_add_ss_shift_a:
+    li      t6, 0
+    j       bf16_add_ss_after
+
+bf16_add_ss_shift_b:
+    li      a5, 0
+    j       bf16_add_ss_after
+
+    # -------- opposite sign --------
+bf16_add_hot_opp:
+    bltu    t5, a4, bf16_add_opp_exp
+    sub     t0, t5, a4
+    bgeu    t0, t3, bf16_add_opp_shift_b
+    srl     a5, a5, t0
+    # fall into opp_after
+
+bf16_add_opp_after:
+    bne     a5, t6, bf16_add_opp_mant0
+    li      a0, 0
+    ret
+
+bf16_add_opp_mant0:
+    bltu    t6, a5, bf16_add_opp_mant1
+    sub     t6, t6, a5                                  # sign stays sign_a
+    j       bf16_add_opp_renorm
+
+bf16_add_opp_mant1:
+    mv      t4, a3                                      # sign = sign_b
+    sub     t6, a5, t6
+
+bf16_add_opp_renorm:
+    bnez    t6, bf16_add_opp_renorm_ue0
+    li      a0, 0
+    ret
+
+bf16_add_opp_renorm_ue0:
+    li      t0, 0x100
+    bltu    t6, t0, bf16_add_opp_renorm_less
+    srli    t6, t6, 1
+    addi    t5, t5, 1
+
+bf16_add_opp_renorm_less:
+    li      t0, 0x80
+    bgeu    t6, t0, bf16_add_opp_pack
+bf16_add_opp_renorm_loop:
+    slli    t6, t6, 1
+    addi    t5, t5, -1
+    bltu    t6, t0, bf16_add_opp_renorm_loop
+
+bf16_add_opp_pack:
+    bgez    t5, bf16_add_opp_pack_exp
+    li      a0, 0
+    ret
+
+bf16_add_opp_pack_exp:
+    li      t0, 255
+    bltu    t5, t0, bf16_add_opp_pack_fin
+    slli    a0, t4, 15
+    li      t0, 0xFF
+    slli    t0, t0, 7
+    or      a0, a0, t0
+    ret
+
+bf16_add_opp_pack_fin:
+    slli    a0, t4, 15
+    slli    t0, t5, 7
+    or      a0, a0, t0
+    andi    t0, t6, 0x7F
+    or      a0, a0, t0
+    ret
+
+bf16_add_opp_exp:
+    sub     t0, a4, t5
+    mv      t5, a4
+    bgeu    t0, t3, bf16_add_opp_shift_a
+    srl     t6, t6, t0
+    j       bf16_add_opp_after
+
+bf16_add_opp_shift_a:
+    li      t6, 0
+    j       bf16_add_opp_after
+
+bf16_add_opp_shift_b:
+    li      a5, 0
+    j       bf16_add_opp_after
 
     /*
      * bf16_add_special_ff — field short-circuit (not class-bit machine).

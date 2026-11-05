@@ -52,14 +52,14 @@ Domains: helpers/sqrt/negate **65536**; pack **2×256×128**; binary **65536²**
 |----|----------:|------------:|----:|
 | `mul` | 102 | **118** | **+16 (+15.7%)** |
 | `add` | 45 | **52** | **+7 (+15.6%)** |
-| `sub` | 48 | **54** | **+6 (+12.5%)** |
+| `sub` | 48 | **53** | **+5 (+10.4%)** |
 | `div` | 96 | **104** | **+8 (+8.3%)** |
 | `sqrt` | 276 | 275 | −1 (~tied) |
 | `u32_to_bf16` | 23 | 22 | −1 (ASM slightly better) |
 
 **Priority:** close **add/sub** then **mul**; **div** already closest among hot binaries; **sqrt** tied.
 
-Door `mv` drop: hot **−2** (add 56→54). Same-sign skip left renorm: **−2** more (add 54→52, sub 56→54; samp). Full classed pending next milestone.
+Door `mv` drop: hot **−2** (add 56→54). Same-sign skip left renorm: **−2** (add 54→52). Early same/opp + align srl fall-through: sub **54→53**, add sum ≈ −0.07/call (samp). Full classed pending next milestone.
 
 ---
 
