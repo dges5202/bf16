@@ -636,6 +636,9 @@ bf16_add_opp_renorm:
      * (no right shift) and exp only stays or shrinks (no Inf).  May need
      * left renorm and exp<0 -> +0.
      * Already-norm (mant>=0x80): exp unchanged >=1 -> pack_fin (skip bgez).
+     *
+     * Left renorm stays 1-bit loop: samp hot almost all k=0/1; binary 4/2/1
+     * and hybrid (force-1 + ladder) both raised add/sub sum — not kept.
      */
     li      t0, 0x80
     bgeu    t6, t0, bf16_add_opp_pack_fin

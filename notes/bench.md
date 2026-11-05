@@ -51,6 +51,8 @@ Tried align fall-through **with** moving sign tails (earlier): samp **regressed*
 
 Tried same-sign `dexp==0` fast path: samp **regressed** ~+0.24/call (extra `beqz` on common arm) — **not kept**.
 
+Tried opposite left renorm **binary 4/2/1**: bit-exact (same sink) but add sum **+0x4cd** (~+0.019/call), sub sum **+0x501**; avg flat 46/48 — **not kept**. Hybrid (force-1 + ladder) modeled worse on `k=2..4` — not kept. Detail: `ADD_HOT_PATH_AUDIT.md`.
+
 Append a samp row for every later hot-path commit. Tooling-only commits stay out.
 
 ## Log — full (milestones)
