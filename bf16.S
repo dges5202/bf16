@@ -529,16 +529,14 @@ bf16_add:
      *
      * Door: no mv a6/a7 (-2 all paths).  Cold ret-a = ret; ret-b = mv a0,a1.
      */
-    # unpack from a0/a1; keep a0=a, a1=b for cold
+    # unpack sign/exp only; mant deferred to hot / special_ff (GCC-style)
     srli    t4, a0, 15                                  # t4 = sign_a
     srli    t5, a0, 7
     andi    t5, t5, 0xFF                                # t5 = 8-bit exp_a
-    andi    t6, a0, 0x7F                                # t6 = 7-bit mant_a
 
     srli    a3, a1, 15                                  # a3 = sign_b (kept; not xor)
     srli    a4, a1, 7
     andi    a4, a4, 0xFF                                # a4 = 8-bit exp_b
-    andi    a5, a1, 0x7F                                # a5 = 7-bit mant_b
 
     # gate
     li      t0, 0xFF
@@ -552,7 +550,7 @@ bf16_add:
 
 bf16_add_hot:
     /*
-     * Hot body: |0x80; align; add or sub; renorm; pack.
+     * Hot body: extract mant; |0x80; align; add or sub; renorm; pack.
      *
      * Early same/opposite split (GCC -O2 style): after |0x80, bne signs so
      * each arm has its own align+epilogue — same-sign skips left renorm and
@@ -561,6 +559,8 @@ bf16_add_hot:
      * Align: common (max=exp_a, dexp<8) srl falls into that arm's after
      * (no j).  Uncommon align tails sit after each arm's ret and j back.
      */
+    andi    t6, a0, 0x7F                                # mant_a (deferred)
+    andi    a5, a1, 0x7F                                # mant_b
     ori     t6, t6, 0x80
     ori     a5, a5, 0x80
     li      t3, 8
@@ -704,6 +704,8 @@ bf16_add_opp_shift_b:
      * zero); mul/div cold moved class->mag-tree after DIV_COLD_VARIANTS.md.
      */
 bf16_add_special_ff:
+    andi    t6, a0, 0x7F                                # mant deferred from door
+    andi    a5, a1, 0x7F
     li      t0, 0xFF
     bne     t5, t0, bf16_add_special_skip1              # a not FF -> not NaN(a)
     bnez    t6, bf16_add_nan                            # a is NaN

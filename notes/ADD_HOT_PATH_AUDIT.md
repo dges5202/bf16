@@ -41,6 +41,6 @@ this easy same-sign arm alone — opposite-sign + distribution dominate the +7.
 | Step | Action | Push rule |
 | :---: | :--- | :--- |
 | 1 | This audit (no guest change) | samp confirm flat |
-| 2 | Defer `andi` mant until hot / FF | samp + MD |
+| 2 | Defer `andi` mant until hot / FF | samp: **hot flat** (andi still on hot; zero/FF cold skip them) |
 | 3 | Slim same-sign pack | samp + MD |
 | 4 | Pause add; start mul (+16) | samp + MD |
