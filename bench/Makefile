@@ -91,6 +91,43 @@ ripes-div-loop: div_loop_ripes_br.elf div_loop_ripes_nbr.elf
 	$(RIPES) $(RIPES_FLAGS) --timeout 600000 --src div_loop_ripes_br.elf
 	$(RIPES) $(RIPES_FLAGS) --timeout 600000 --src div_loop_ripes_nbr.elf
 
+# --- soft-mul loop: branchless (nbr) vs branched (br) ---
+mul_loop_variants.o: mul_loop_variants.S
+	$(AS) $(ASFLAGS) $< -o $@
+mul_loop_bench_main.o: mul_loop_bench_main.c
+	$(CC) $(CFLAGS) -c $< -o $@
+mul_loop_bench.elf: start.o perfcounter.o bf16_c_o2.o mul_loop_variants.o mul_loop_bench_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_c_o2.o mul_loop_variants.o mul_loop_bench_main.o
+
+# Sample only (skip FULL 2^32): make run-mul-loop-sample
+mul_loop_bench_sample_main.o: mul_loop_bench_main.c
+	$(CC) $(CFLAGS) -DMUL_LOOP_SKIP_FULL -c $< -o $@
+mul_loop_bench_sample.elf: start.o perfcounter.o bf16_c_o2.o mul_loop_variants.o mul_loop_bench_sample_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o perfcounter.o bf16_c_o2.o mul_loop_variants.o mul_loop_bench_sample_main.o
+
+.PHONY: run-mul-loop run-mul-loop-sample ripes-mul-loop
+run-mul-loop: mul_loop_bench.elf
+	mkdir -p results
+	$(RV32EMU) $< | tee results/mul_loop_rv32emu.txt
+run-mul-loop-sample: mul_loop_bench_sample.elf
+	mkdir -p results
+	$(RV32EMU) $< | tee results/mul_loop_rv32emu_sample.txt
+
+mul_loop_ripes_br_main.o: mul_loop_ripes_main.c
+	$(CC) $(CFLAGS) -c $< -o $@
+mul_loop_ripes_nbr_main.o: mul_loop_ripes_main.c
+	$(CC) $(CFLAGS) -DUSE_NBR -c $< -o $@
+mul_loop_ripes_br.elf: start.o mul_loop_variants.o mul_loop_ripes_br_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o mul_loop_variants.o mul_loop_ripes_br_main.o
+mul_loop_ripes_nbr.elf: start.o mul_loop_variants.o mul_loop_ripes_nbr_main.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ start.o mul_loop_variants.o mul_loop_ripes_nbr_main.o
+
+ripes-mul-loop: mul_loop_ripes_br.elf mul_loop_ripes_nbr.elf
+	mkdir -p results
+	{ $(RIPES) $(RIPES_FLAGS) --timeout 600000 --src mul_loop_ripes_br.elf; \
+	  $(RIPES) $(RIPES_FLAGS) --timeout 600000 --src mul_loop_ripes_nbr.elf; } \
+	  | tee results/mul_loop_ripes.txt
+
 # --- full-domain classed instret (hot/nan/inf/zero/sub) ---
 stats_class_c_main.o: stats_class_main.c
 	$(CC) $(CFLAGS) -c $< -o $@

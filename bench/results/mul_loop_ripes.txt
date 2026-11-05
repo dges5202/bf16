@@ -1,0 +1,28 @@
+
+Program exited with code: 56
+{
+    "# instructions retired": 1219015,
+    "CPI": 1.2352030122681017,
+    "IPC": 0.8095835179059208,
+    "cycles": 1505731,
+    "runinfo": {
+        "ISA extensions": [
+        ],
+        "processor": "RV32_5S",
+        "source file": "mul_loop_ripes_br.elf"
+    }
+}
+
+Program exited with code: 56
+{
+    "# instructions retired": 1315320,
+    "CPI": 1.1729480278563391,
+    "IPC": 0.8525526930869937,
+    "cycles": 1542802,
+    "runinfo": {
+        "ISA extensions": [
+        ],
+        "processor": "RV32_5S",
+        "source file": "mul_loop_ripes_nbr.elf"
+    }
+}

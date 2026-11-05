@@ -16,7 +16,7 @@ Folds [`MUL_HOT_PATH_AUDIT.md`](MUL_HOT_PATH_AUDIT.md), [`leaves/bf16_mul.md`](l
 ## 1. Measure (mul only)
 
 ```bash
-cd 02-bf16/bench && source env.sh
+cd bench && source env.sh
 make stats-samp-asm OPS=mul
 make path-class OPS=mul
 make path-class-join OPS=mul
@@ -31,24 +31,27 @@ make path-class-join OPS=mul
 
 ## 2. Headline results
 
-### Samp (current, seed `0xC0FFEE`)
+### Samp (current branchless production)
 
 | Op | ASM | C | gap |
 | :--- | ---: | ---: | ---: |
-| mul | **116** | **102** | **+14** |
+| mul | **115** | **101** | **+14** |
 
-### Path-class full hot (`6c00fa9` scan)
+Logs: `bench/results/stats_samp_{asm,c_o2}_mul.txt`.
+
+### Path-class full (pre loop-flip baseline)
 
 | Bucket | ASM | C | gap |
 | :--- | ---: | ---: | ---: |
-| hot | **116** | **102** | **+14** |
-| all | 115 | 101 | +14 |
-| sub | 113 | 91 | +22 |
-| nan | 32 | 24 | +8 |
-| zero | 39 | 27 | +12 |
-| inf | 39 | 32 | +7 |
+| hot | **115** | **101** | **+14** |
+| all | 114 | 100 | +14 |
+| sub | 112 | 90 | +22 |
+| nan | 31 | 23 | +8 |
+| zero | 38 | 26 | +12 |
+| inf | 38 | 31 | +7 |
 
-Older full `stats_class` (pre door) had hot **118 vs 102**; door drop brought samp to 116.
+Join: [`../bench/results/path_class_join_mul.md`](../bench/results/path_class_join_mul.md).  
+Soft-mul **nbr vs br** evidence (rv32emu + Ripes): [`../bench/MUL_LOOP_VARIANTS.md`](../bench/MUL_LOOP_VARIANTS.md).
 
 ---
 
@@ -104,7 +107,7 @@ Full tables: [`leaves/bf16_mul.md`](leaves/bf16_mul.md).
 
 Ranked by measured impact, not guesswork:
 
-1. **Soft 8-iter mask-add shape** vs GCC `.L30` (same 8 rounds; compare mask/`snez` setup and post-loop `>>7`/`>>8`).
+1. **Soft-mul loop shape** — measured: branched skip beats branchless on instret **and** Ripes cycles ([`MUL_LOOP_VARIANTS.md`](../bench/MUL_LOOP_VARIANTS.md)); production flip pending.
 2. **Gate**: ASM still `slli`+`beqz` mag×2; C uses exp-first (add already proved −2/call there).
 3. **Pack / under-over**: Inf const path, `bge` vs `bltu`.
 4. Cold trees (nan/zero/inf) — high gap/call, tiny `n` vs hot.
@@ -117,6 +120,7 @@ Ranked by measured impact, not guesswork:
 | :--- | :--- |
 | Door −2 | **Done** (118→116) |
 | Beat C on hot | **Open** (+14) |
-| Path-class baseline | **Done** |
+| Path-class + samp baseline (nbr) | **Done** |
+| Loop A/B (nbr vs br) + Ripes | **Done** — prefer br; flip not landed |
 
-**Next:** attack `mul_sh8` / `mul_sh7` with samp `OPS=mul` after each try.
+**Next:** land branched soft-mul in `bf16.S`, then re-samp `OPS=mul`.

@@ -1,7 +1,7 @@
 # BF16 truncate — classed instret log
 
-Same idea as `03-gcd/notes/bench.md`: one row per commit that changes guest hot paths,
-measured the same way every time.
+One row per commit that changes guest hot paths, measured the same way every time.
+Paths below are relative to this project root (portable if the tree moves).
 
 ## Hard gate (before every push)
 
@@ -17,7 +17,7 @@ Tooling-only commits (harness/docs with **no** guest `bf16.S` / `bf16.c` change)
 Default `OPS=all`. While tuning **add/sub**, do **not** re-run mul/div/helpers:
 
 ```bash
-cd 02-bf16/bench && source env.sh
+cd bench && source env.sh
 make stats-samp-asm OPS=add,sub     # → results/stats_samp_asm_add_sub.txt
 make path-class-asm OPS=add,sub     # full path for add+sub only (~minutes)
 make path-class-join OPS=add,sub
@@ -49,7 +49,7 @@ KPI: **hot** avg (both finite normal). Hex in raw logs; decimal in tables.
 `get_instret` wrap included. Samp also prints `sum` (low 32) so sub-integer moves show up before avg ticks.
 
 ```bash
-cd 02-bf16/bench && source env.sh
+cd bench && source env.sh
 make stats-samp-asm OPS=add,sub   # typical while on add/sub
 # N_HOT=32768 make stats-samp-asm OPS=add,sub
 make path-class OPS=add,sub       # add/sub path milestone
@@ -72,6 +72,7 @@ C GCC `-O2` hot reference (**samp**, same seed): **add 45 / sub 48 / mul 102 / d
 | `b168a70` | opp already-norm skip bgez | **46** | **48** | 116 | 104 | **+1** | ≈ −0.49 /call |
 | `3d32f24` | opp mant0 fall into renorm | **46** | **48** | 116 | 104 | **+1** | ≈ −0.001 /call |
 | `c9df043` | opp `ea<eb`: always `mb>ma`, skip cmp | **44** | **46** | 116 | 104 | **−1** | ≈ −1.45 /call |
+| *(mul baseline)* | branchless soft-mul still in tree; A/B+Ripes in `bench/MUL_LOOP_VARIANTS.md` | — | — | **115** | — | +14 vs C 101 | samp `OPS=mul` only |
 
 Tried align fall-through **with** moving sign tails (earlier): samp **regressed** ~+0.44 — not kept. This row keeps sign specialized per arm.
 

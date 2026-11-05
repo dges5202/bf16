@@ -1,0 +1,10 @@
+mul loop: branchless(nbr) vs branched(br)
+nbr check n=00009cd0 fail=00000000
+br  check n=00009cd0 fail=00000000
+--- instret sample all ---
+nbr n=00009cd0 avg=00000074 max=00000077 wa=00004040 wb=00004040 sink=4e73347e
+br  n=00009cd0 avg=00000069 max=0000006f wa=00004040 wb=00007f7f sink=4e73347e
+--- instret sample hot-only ---
+nbr n=00009b34 avg=00000075 max=00000077 wa=00004040 wb=00004040 sink=4da61b7e
+br  n=00009b34 avg=0000006a max=0000006f wa=00004040 wb=00007f7f sink=4da61b7e
+DONE

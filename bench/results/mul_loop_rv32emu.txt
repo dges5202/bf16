@@ -1,0 +1,34 @@
+mul loop: branchless(nbr) vs branched(br)
+nbr check n=00009cd0 fail=00000000
+br  check n=00009cd0 fail=00000000
+--- instret sample all ---
+nbr n=00009cd0 avg=00000074 max=00000077 wa=00004040 wb=00004040 sink=4e73347e
+br  n=00009cd0 avg=00000069 max=0000006f wa=00004040 wb=00007f7f sink=4e73347e
+--- instret sample hot-only ---
+nbr n=00009b34 avg=00000075 max=00000077 wa=00004040 wb=00004040 sink=4da61b7e
+br  n=00009b34 avg=0000006a max=0000006f wa=00004040 wb=00007f7f sink=4da61b7e
+--- FULL 65536^2: match + instret ---
+prog a=00000000
+prog a=00001000
+prog a=00002000
+prog a=00003000
+prog a=00004000
+prog a=00005000
+prog a=00006000
+prog a=00007000
+prog a=00008000
+prog a=00009000
+prog a=0000a000
+prog a=0000b000
+prog a=0000c000
+prog a=0000d000
+prog a=0000e000
+prog a=0000f000
+match fail=00000000 sink=c189cf98
+all  n=00000000 (full 2^32)
+nbr all avg=00000075 max=0000007c
+br  all avg=00000068 max=0000006e
+hot n=fdfd0404
+nbr hot avg=00000076 max=0000007c
+br  hot avg=00000069 max=0000006e
+DONE

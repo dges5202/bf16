@@ -1,0 +1,36 @@
+path_class=ASM hand bf16.S
+rv32emu instret (CPI=1); wrap included; cls+path buckets
+OPS=filtered
+== mul FULL 65536^2 ==
+  prog a=00000000
+  prog a=00001000
+  prog a=00002000
+  prog a=00003000
+  prog a=00004000
+  prog a=00005000
+  prog a=00006000
+  prog a=00007000
+  prog a=00008000
+  prog a=00009000
+  prog a=0000a000
+  prog a=0000b000
+  prog a=0000c000
+  prog a=0000d000
+  prog a=0000e000
+  prog a=0000f000
+mul.cls=all n_hi=00000001 n=00000000 avg=00000072 max=00000075 wa=00000081 wb=00003eff sum_hi=00000072 sum=ed20724c
+mul.cls=hot n_hi=00000000 n=fc040000 avg=00000073 max=00000075 wa=00000081 wb=00003eff sum_hi=00000071 sum=ce946f38
+mul.cls=nan n_hi=00000000 n=01fb03fc avg=0000001f max=00000021 wa=00000000 wb=00007f81 sum_hi=00000000 sum=3f5f8180
+mul.cls=inf n_hi=00000000 n=0003fc04 avg=00000026 max=00000028 wa=00000001 wb=00007f80 sum_hi=00000000 sum=009b647c
+mul.cls=zero n_hi=00000000 n=0003fbfc avg=00000026 max=00000028 wa=00000001 wb=00000000 sum_hi=00000000 sum=009b6360
+mul.cls=sub n_hi=00000000 n=01f90404 avg=00000070 max=00000073 wa=00000001 wb=00003f80 sum_hi=00000000 sum=ddf5b9b8
+mul.path=cold_nan n_hi=00000000 n=01fb03fc avg=0000001f max=00000021 wa=00000000 wb=00007f81 sum_hi=00000000 sum=3f5f8180
+mul.path=cold_inf n_hi=00000000 n=0003fc04 avg=00000026 max=00000028 wa=00000001 wb=00007f80 sum_hi=00000000 sum=009b647c
+mul.path=cold_zero n_hi=00000000 n=0003fbfc avg=00000026 max=00000028 wa=00000001 wb=00000000 sum_hi=00000000 sum=009b6360
+mul.path=cold_sub n_hi=00000000 n=01f90404 avg=00000070 max=00000073 wa=00000001 wb=00003f80 sum_hi=00000000 sum=ddf5b9b8
+mul.path=mul_sh7 n_hi=00000000 n=4ac9d108 avg=00000073 max=00000073 wa=00000080 wb=00003f00 sum_hi=00000021 sum=98a8e698
+mul.path=mul_sh8 n_hi=00000000 n=72b55e10 avg=00000075 max=00000075 wa=00000081 wb=00003eff sum_hi=00000034 sum=6ce3fd50
+mul.path=mul_under n_hi=00000000 n=1e7754e8 avg=0000006f max=00000070 wa=00000081 wb=000000ff sum_hi=0000000d sum=3bed5b50
+mul.path=mul_over n_hi=00000000 n=200d7c00 avg=00000074 max=00000075 wa=00003f81 wb=00007f7f sum_hi=0000000e sum=8d1a3000
+mul sink=60c4e7cc
+DONE
