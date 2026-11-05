@@ -28,7 +28,7 @@ C GCC `-O2` hot reference (**samp**, same seed): **add 45 / sub 48 / mul 102 / d
 | Commit | Change | add | sub | mul | div | add−C | sum Δ add |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | :--- |
 | `95974ab` | drop add door `mv` a6/a7 | 54 | 56 | 118 | 104 | +9 | (full also 54/56) |
-| `TBD` | same-sign skip left renorm (GCC-O2) | 52 | 54 | 118 | 104 | +7 | ≈ −2.0 /call |
+| `24755e0` | same-sign skip left renorm (GCC-O2) | 52 | 54 | 118 | 104 | +7 | ≈ −2.0 /call |
 
 Tried align common-path fall-through (uncommon tails after `ret`): samp **regressed** ~+0.44 insn/call on add/sub — **not kept**.
 
