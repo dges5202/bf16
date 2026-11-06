@@ -18,6 +18,7 @@ Other leaves (mul/div/…) are out of scope here except as KPI context.
 - Full-domain path tables: [`leaves/bf16_add.md`](leaves/bf16_add.md), [`leaves/bf16_sub.md`](leaves/bf16_sub.md)
 - Join dump: [`path_class_join.md`](../bench/results/path_class_join.md)
 - 5-stage cycle chapter logs: [`../bench/ADD_SUB_CYCLES.md`](../bench/ADD_SUB_CYCLES.md)
+- Truncate-vs-IEEE full-domain ulps: [`../TRUNCATE_VS_IEEE.md`](../TRUNCATE_VS_IEEE.md)
 
 ---
 
@@ -267,3 +268,62 @@ Against the previous ASM that is about **−8.8 cycles/call** on both ops. Whole
 ### 9.6 Takeaway
 
 Under CPI = 1, “delete an instruction” and “delete a taken branch” look the same. On RV32_5S they do not. The branch to keep on the hot path is the one that is **not taken**.
+
+---
+
+## 10. Truncation error on real weights (GPT-2)
+
+Chapter 9 is about cycles. This chapter is about **value** error of the working policy: chop extra bits toward zero, no round-to-nearest-even. Full-domain ulp rates against IEEE RNE are in [`../TRUNCATE_VS_IEEE.md`](../TRUNCATE_VS_IEEE.md) (add/sub disagree on ~3.3% of normal×normal pairs, usually 1 ulp). Those rates treat every bf16 pattern as equally likely. Trained weights are not.
+
+### 10.1 What was measured
+
+Source: OpenAI GPT-2 FP32 checkpoint (`openai-community/gpt2`, `model.safetensors`).  
+**124 412 160** trained parameters. The causal `attn.bias` masks are not weights and were left out.
+
+Two different questions:
+
+| Question | Method |
+| :--- | :--- |
+| How far is a stored weight from the FP32 original? | Chop the low 16 bits of the FP32 word (trunc BF16) vs round-to-nearest-even into BF16 |
+| How far is one real matmul from an FP32 dot product? | Token embedding × `h.0.attn.c_attn.weight` (`K=768`, `N=2304`) |
+
+The matmul is reported two ways. **Cast + FP32 acc** only chops the inputs, then sums in FP32 (the usual GPU BF16 pattern). **Trunc mul/add** is this tree’s policy: every product and every running add is `bf16_mul` / `bf16_add` from [`bf16.c`](../bf16.c). Self-check of that port: `add(1,1)=2`, `mul(1,2)=2`, `add(1,−1)=0`.
+
+Relative error of a weight is `|cast − fp32| / |fp32|`. Output error is RMS of the residual divided by RMS of the FP32 result. Five embedding rows were used as inputs (token ids 0, 262, 464, 1000, 50000).
+
+### 10.2 Stored weights
+
+Chopping to BF16 moves a normal by at most one BF16 ulp. One ulp at the 7-bit mantissa is `2^−7 ≈ 0.781%` relative.
+
+| | Trunc (chop) | RNE |
+| :--- | ---: | ---: |
+| Mean relative error | **0.281%** | 0.142% |
+| Median (hist edge) | ≤ 0.391% | |
+| p99 / p99.9 | ≤ 0.781% | |
+| Max relative | **0.775%** | |
+| Already exact in BF16 | 0.0015% of weights | |
+| Trunc code ≠ RNE code | **49.9%** of weights | |
+
+So on this checkpoint the chop never exceeds 1 ulp, and it roughly doubles the average storage error of RNE. The full-domain “128 ulp” add outliers do not show up: those need overflow, flush, or subnormals, and these weights sit in the normal bin.
+
+### 10.3 One real matmul
+
+`y = embedding @ c_attn`, compared with the FP32 dot product.
+
+| Accumulation | relRMS vs FP32 | cosine |
+| :--- | ---: | ---: |
+| Trunc-cast inputs, FP32 sum | **0.58%–0.63%** | 0.999998 |
+| RNE-cast inputs, FP32 sum | 0.17%–0.21% | |
+| Trunc `bf16_mul` + `bf16_add` | **6.4%–7.8%** | 0.9985–0.9990 |
+
+The five tokens land in those bands; none is an outlier. Cosine stays high because the error is a small relative perturbation, not a rotation of the vector.
+
+### 10.4 Why the MAC is worse than the cast
+
+A BF16 mantissa has 7 bits. Casting a weight throws away bits once. The trunc accumulator throws them away **on every add**. The dot is 768 terms long, so the partial sum’s low bits never stick. That is an accumulation-width limit, not a sign that the weights themselves were far from BF16.
+
+FP32 accumulation after a trunc cast stays near the storage error (~0.6% RMS). That is the number to quote for “store the matrix in trunc BF16.” The 6–8% RMS is the number to quote for “reduce the dot with `bf16_add`.”
+
+### 10.5 What this does not say
+
+This is one layer and one matmul, not a full GPT-2 forward. Later layers can compound. It also does not re-measure add/sub instret or Ripes cycles; the arithmetic here is the C policy, bit-identical to the guest contract.

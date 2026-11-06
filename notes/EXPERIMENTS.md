@@ -14,7 +14,7 @@ so you do not need to chase audits + leaves + bench logs separately.
 ## How to measure while editing one group
 
 ```bash
-cd 02-bf16/bench && source env.sh
+cd bench && source env.sh
 make stats-samp-asm OPS=add,sub    # or mul | div | sqrt
 make path-class OPS=add,sub        # milestone path full for that group
 make path-class-join OPS=add,sub

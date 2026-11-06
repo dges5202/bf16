@@ -1,0 +1,5 @@
+*.dSYM
+*.elf
+*.o
+.DS_Store
+__pycache__/

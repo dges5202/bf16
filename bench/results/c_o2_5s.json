@@ -1,0 +1,12 @@
+{
+    "# instructions retired": 9737,
+    "CPI": 1.343329567628633,
+    "IPC": 0.7444189602446484,
+    "cycles": 13080,
+    "runinfo": {
+        "ISA extensions": [
+        ],
+        "processor": "RV32_5S",
+        "source file": "/home/dges5202/Computer_architecture/homework/2026-hw2-baremetal/02-bf16/bench/ripes_c.elf"
+    }
+}

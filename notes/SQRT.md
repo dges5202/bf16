@@ -15,7 +15,7 @@ Folds [`leaves/bf16_sqrt.md`](leaves/bf16_sqrt.md), [`PERF_TRUNCATE.md`](../PERF
 ## 1. Measure (sqrt only)
 
 ```bash
-cd 02-bf16/bench && source env.sh
+cd bench && source env.sh
 make path-class OPS=sqrt          # unary full is fast
 make path-class-join OPS=sqrt
 # samp harness is binary-oriented; path-class is the primary sqrt KPI

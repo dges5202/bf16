@@ -29,7 +29,7 @@ make stats-class          # milestone only: FULL domain; ~27 min each
 ## rv32emu limit
 
 **`cycle` ≡ `instret` (CPI=1).** No LU stall / branch flush / cache.  
-Each sample includes `get_instret` wrap (~few insn). Use for **relative** ASM vs C and HW2 budgets.
+Each sample includes `get_instret` wrap (~few insn). Use for **relative** ASM vs C comparisons.
 
 ## Classification (exclusive ladder)
 

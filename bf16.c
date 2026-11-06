@@ -1,8 +1,6 @@
 /*
- * Host-side harness for Quiz 1 B: BFloat16.
- *
- * WORKING COPY — AI / industrial truncate-oriented variant.
- * Full IEEE subnormals+RNE reference: bf16_ieee_rne.c (do not edit for this path).
+ * Truncate BF16 — host C working copy (pair: bf16.S guest ASM).
+ * IEEE subnormals+RNE twin: bf16_ieee_rne.c (archive; do not edit for this path).
  *
  * Policy (hot paths):
  *   - No RNE: chop with shifts and & 0x7F (drop G/R/S).
@@ -12,10 +10,9 @@
  *   - Div: DAZ — subnormal inputs (exp==0 && mant!=0) flush to +/-0 before
  *     specials/hot; soft-div is 8-bit aligned (normal×normal contract). See bf16_div.
  *
- * Fill the bodies under "write here". Types, masks, main, and tests are given.
- * No float arithmetic inside those bodies: treat binary32 as a uint32_t bit
- * pattern (memcpy, not a pointer cast). On the host, integer `*` is fine;
- * the RV32I guest will not have mul.
+ * No float arithmetic in the op bodies: binary32 is a uint32_t bit pattern
+ * (memcpy, not a pointer cast). Host integer `*` is fine for mant products;
+ * the RV32I guest has no mul.
  *
  *   make test
  */
@@ -40,7 +37,7 @@ typedef struct {
 #define BF16_INF()  ((bf16_t) {.bits = 0x7F80})
 #define BF16_NEG_INF()  ((bf16_t) {.bits = 0xFF80})
 
-/* ========== write here ========== */
+/* ========== bf16 ops ========== */
 
 static uint16_t bf16_sign(bf16_t a)
 {
@@ -424,7 +421,7 @@ int main(void)
     int fail = 0;
     bf16_t arr[2];
 
-    /* Quiz: 0x4049 -> e=1, M=73, value 3.140625.  1.0 is 0x3F80. */
+    /* 0x4049 -> e=1, M=73, value 3.140625.  1.0 is 0x3F80. */
     fail += checki("sign(0x4049)", (int) bf16_sign(B(0x4049)), 0);
     fail += checki("exp(0x4049)", (int) bf16_exp(B(0x4049)), 128);
     fail += checki("mant(0x4049)", (int) bf16_mant(B(0x4049)), 73);

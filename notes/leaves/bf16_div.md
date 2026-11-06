@@ -5,7 +5,7 @@ Canonical narrative (incl. loop/cold A/B): [`../DIV.md`](../DIV.md).
 ## Reproduce
 
 ```bash
-cd 02-bf16/bench && source env.sh
+cd bench && source env.sh
 make path_class_asm_main.o path_class_c_main.o PATH_CLASS_CFLAGS=-DPATH_CLASS_SKIP_U32
 make path-class-asm path-class-c
 python3 join_path_class.py results/path_class_asm.txt results/path_class_c_o2.txt results/path_class_join.md

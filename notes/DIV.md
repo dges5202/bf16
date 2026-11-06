@@ -15,7 +15,7 @@ Folds [`DIV_LOOP_VARIANTS.md`](../bench/DIV_LOOP_VARIANTS.md), [`DIV_COLD_VARIAN
 ## 1. Measure (div only)
 
 ```bash
-cd 02-bf16/bench && source env.sh
+cd bench && source env.sh
 make stats-samp-asm OPS=div
 make path-class OPS=div
 make path-class-join OPS=div
